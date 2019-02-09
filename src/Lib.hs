@@ -45,29 +45,35 @@ siteComponent c = do
   (stateU, stateModel) <- newSignal Nothing :: Z.PosType t => FRP ( Sink (Maybe (DT.Forest Page, Z.TreePos t Page))
                                                                   , Signal (Maybe (DT.Forest Page, Z.TreePos t Page)))
 
-  subscribeEvent (filterJust $ updates stateModel) $ \(f, z) -> 
+  subscribeEvent (filterJust $ updates stateModel) $ \(f, z) -> do
+    print $ Z.label z
     let gist = dataSource $ Z.label z
-    in loadGist_ viewU gist $ viewU . ArtReady 
+    print gist
+    loadGist_ viewU gist $ viewU . ArtReady 
 
   let v = fmap view viewModel
 
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
       [] -> viewU $ ArtError $ DatasourceError "There are no files in this forest"
-      (f:fs) -> 
+      (f:fs) -> do
         let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
-        in case forest of
+        print forest
+        case forest of
               Left err -> viewU $ ArtError $ DatasourceError $ JSS.pack err
               Right forest' -> case Z.nextTree (Z.fromForest forest') of
                                   Nothing -> viewU $ ArtError $ DatasourceError "There are no trees in this forest"
-                                  Just x' -> stateU $ Just (forest', x')
+                                  Just x' -> do
+                                    print forest'
+                                    print x'
+                                    stateU $ Just (forest', x')
 
   pure v
 
   where 
     loadGist_ :: Sink ArticleStatus -> GistId -> (Gist -> IO ()) -> IO ()
     loadGist_ viewU g f = void . forkIO $ do
-      a <- loadGist . rootGist $ c -- :: IO (Either DatasourceError a)
+      a <- loadGist g -- :: IO (Either DatasourceError a)
       case a of
         Left x -> viewU $ ArtError x
         Right a' -> f a'
