@@ -32,6 +32,7 @@ import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom.Html.Attributes as A        
 import qualified Web.VirtualDom.Html.Events     as E  
 import           Lubeck.App                     (Html)
+import qualified Data.ByteString.Char8          as BS
 
 import Data.Aeson
 import Data.Aeson.Types
@@ -59,31 +60,43 @@ data SiteConfig = SiteConfig
 
 newtype GistId = GistId { getGistId :: JSString }  
 
-data ArticleStatus = ArtPending | ArtError DatasourceError | ArtReady Article
+data ArticleStatus = ArtPending | ArtError DatasourceError | ArtReady Gist
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
-  (u, model) <- newSignal ArtPending
+  (viewU, viewModel) <- newSignal ArtPending
+  (stateU, stateModel) <- newSignal Nothing :: Z.PosType t => FRP (Sink (Maybe (DT.Forest Page, Z.TreePos t Page)), Signal (Maybe (DT.Forest Page, Z.TreePos t Page)))
 
-  -- print $ DT.drawForest $ fmap (fmap show) thesite
-  let a = encode thesite
-  print a
-  let b = eitherDecode' a :: Either String (DT.Forest Page)
-  print $ show b
+  subscribeEvent (filterJust $ updates stateModel) $ \(f, z) -> 
+    let gist = dataSource $ Z.label z
+    in loadGist_ viewU gist $ viewU . ArtReady 
 
-  let v = fmap view model
-  void . forkIO $ do
-    a <- loadGist . rootGist $ c
-    case a of
-      Left x -> u $ ArtError x
-      Right a' -> u $ ArtReady a'
+  let v = fmap view viewModel
+
+  loadGist_ viewU (rootGist c) $ \a -> 
+    case unfiles $ files a of
+      [] -> viewU $ ArtError $ DatasourceError "There are no files in this forest"
+      (f:fs) -> 
+        let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
+        in case forest of
+              Left err -> viewU $ ArtError $ DatasourceError $ JSS.pack err
+              Right forest' -> case Z.nextTree (Z.fromForest forest') of
+                                  Nothing -> viewU $ ArtError $ DatasourceError "There are no trees in this forest"
+                                  Just x' -> stateU $ Just (forest', x')
 
   pure v
 
   where 
+    loadGist_ :: Sink ArticleStatus -> GistId -> (Gist -> IO ()) -> IO ()
+    loadGist_ viewU g f = void . forkIO $ do
+      a <- loadGist . rootGist $ c -- :: IO (Either DatasourceError a)
+      case a of
+        Left x -> viewU $ ArtError x
+        Right a' -> f a'
+
     view ArtPending = label "Pending"
     view (ArtError (DatasourceError s)) = label s
-    view (ArtReady a) = gistH (getFiles $ files a)
+    view (ArtReady a) = gistH $ unfiles $ files a
 
     gistH :: [File] -> Html
     gistH as = H.div [] (join $ fmap renderFileH as)
@@ -146,10 +159,10 @@ instance FromJSON Files where
 instance FromJSON File where
   parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = Prelude.drop $ Prelude.length ("f_" :: String)}
 
-newtype Files = Files { getFiles :: [File]}
+newtype Files = Files { unfiles :: [File]}
 
 deriving instance Show Files
-deriving instance GHC.Generic Files
+-- deriving instance GHC.Generic Files
 
 deriving instance Show GistId
 deriving instance GHC.Generic GistId
@@ -164,8 +177,8 @@ data File =
     } deriving (GHC.Generic, Show)
 
 
-data Article = 
-  Article 
+data Gist = 
+  Gist 
     { updated_at  :: Maybe UTCTime
     , created_at  :: Maybe UTCTime
     , id          :: GistId
@@ -183,7 +196,7 @@ data API = API {
 
 gistApi =   API "https://api.github.com/gists/" []
 
-loadGist :: GistId -> IO (Either DatasourceError Article)
+loadGist :: FromJSON a => GistId -> IO (Either DatasourceError a)
 loadGist x = getAPI gistApi (getGistId x)
 
 mkAPIpath api path = do
