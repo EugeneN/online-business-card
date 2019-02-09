@@ -6,7 +6,7 @@ distdir := $(buildroot)/$(stackroot)/$(suffix)
 
 .PHONY : serve copyres build all open
 
-serve:
+serve: all
 	sws --port 4444 -d -P $(distdir)
 
 copyres:

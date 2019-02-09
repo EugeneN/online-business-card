@@ -71,22 +71,13 @@ siteComponent c = do
   where 
     view ArtPending = label "Pending"
     view (ArtError (DatasourceError s)) = label s
-    view (ArtReady a) = articleH (getFiles $ files a)
+    view (ArtReady a) = gistH (getFiles $ files a)
 
-    articleH :: [File] -> Html
-    articleH as = 
-      H.div [A.class_ "article"]
-            [H.div [A.class_ "article-file-body"]
-                   (renderFilesH as) ]
+    gistH :: [File] -> Html
+    gistH as = H.div [] (join $ fmap renderFileH as)
               
-    renderFilesH as = fmap renderFileH as
-
-    renderFileH :: File -> Html
-    renderFileH f =
-      H.div [A.class_ "article-file"] 
-            [H.div [A.class_ "article-file-body"] 
-                   (htmlStringToVirtualDom $ f_content f)
-            ]
+    renderFileH :: File -> [Html]
+    renderFileH f = htmlStringToVirtualDom $ f_content f
       
 
 --------------------------------------------------------------------------------
