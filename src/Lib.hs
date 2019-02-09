@@ -26,6 +26,12 @@ import qualified Data.Text          as T
 import qualified Data.JSString                  as JSS      
 import qualified Data.HashMap.Strict as HM    
 import Data.Monoid ((<>))
+import           Control.Concurrent             (forkIO)
+import           Control.Monad                  (void)
+import qualified Web.VirtualDom.Html            as H
+import qualified Web.VirtualDom.Html.Attributes as A        
+import qualified Web.VirtualDom.Html.Events     as E  
+import           Lubeck.App                     (Html)
 
 import Data.Aeson
 import Data.Aeson.Types
@@ -36,9 +42,8 @@ import           Lubeck.FRP
 import           Lubeck.Util                    (showJS)
 import qualified Components.Map                 as Map
 import           UICombinators
+import Utils
 
-jss2text = T.pack . JSS.unpack
-text2jss = JSS.pack . T.unpack
 
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON
@@ -46,18 +51,48 @@ instance FromJSON JSString where
 data SiteConfig = SiteConfig 
         { rootGist :: GistId }
 
-newtype GistId = GistId { getGistId :: JSString }        
+newtype GistId = GistId { getGistId :: JSString }  
+
+data ArticleStatus = ArtPending | ArtError DatasourceError | ArtReady Article
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
-  a <- loadGist . rootGist $ c
-  pure $ pure $ label $ showJS a
+  (u, model) <- newSignal ArtPending
 
-data Error = Error JSString
+  let v = fmap view model
+  void . forkIO $ do
+    a <- loadGist . rootGist $ c
+    case a of
+      Left x -> u $ ArtError x
+      Right a' -> u $ ArtReady a'
+
+  pure v
+
+  where 
+    view ArtPending = label "Pending"
+    view (ArtError (DatasourceError s)) = label s
+    view (ArtReady a) = articleH (getFiles $ files a)
+
+    articleH :: [File] -> Html
+    articleH as = 
+      H.div [A.class_ "article"]
+            [H.div [A.class_ "article-file-body"]
+                   (renderFilesH as) ]
+              
+    renderFilesH as = fmap renderFileH as
+
+    renderFileH :: File -> Html
+    renderFileH f =
+      H.div [A.class_ "article-file"] 
+            [H.div [A.class_ "article-file-body"] 
+                   (htmlStringToVirtualDom $ f_content f)
+            ]
+      
+
+--------------------------------------------------------------------------------
 
 data Mimetype = Plaintext | OtherMimetype JSString | UnknownMimetype JSString
                 deriving (Show)
-
 
 instance FromJSON Mimetype where
   parseJSON (String "text/plain") = pure Plaintext
@@ -75,7 +110,7 @@ instance FromJSON Files where
 instance FromJSON File where
   parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = Prelude.drop $ Prelude.length ("f_" :: String)}
 
-newtype Files = Files [File]
+newtype Files = Files { getFiles :: [File]}
 
 deriving instance Show Files
 deriving instance GHC.Generic Files

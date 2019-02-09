@@ -16,7 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   ghc-options:         -Wall
-  exposed-modules:     Lib, UICombinators
+  exposed-modules:     Lib, UICombinators, Utils
   build-depends:       base
                      , lubeck-web
                      , lubeck-frp
@@ -31,6 +31,7 @@ library
                      , bytestring
                      , text
                      , unordered-containers
+                     , xml
   default-language:    Haskell2010
 
 executable business-demo

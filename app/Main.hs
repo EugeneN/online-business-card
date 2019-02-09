@@ -6,7 +6,7 @@ import           Lib            (SiteConfig(..), GistId(..), siteComponent)
 import           Lubeck.App     (runAppReactive)
 
 
-c = SiteConfig (GistId "ff3d182ce385cebb1774")
+c = SiteConfig (GistId "8cbb546208d7a5c2fe978416c60ff97f")
 
 
 main :: IO ()
