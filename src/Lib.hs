@@ -22,6 +22,10 @@ import qualified Data.JSString
 import Data.ByteString
 import qualified GHC.Generics as GHC
 import           Data.JSString.Text (textFromJSString, textToJSString)
+import qualified Data.Text          as T  
+import qualified Data.JSString                  as JSS      
+import qualified Data.HashMap.Strict as HM    
+import Data.Monoid ((<>))
 
 import Data.Aeson
 import Data.Aeson.Types
@@ -33,6 +37,8 @@ import           Lubeck.Util                    (showJS)
 import qualified Components.Map                 as Map
 import           UICombinators
 
+jss2text = T.pack . JSS.unpack
+text2jss = JSS.pack . T.unpack
 
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON
@@ -49,32 +55,42 @@ siteComponent c = do
 
 data Error = Error JSString
 
-data Mimetype = Plaintext | UnknownMimetype JSString
+data Mimetype = Plaintext | OtherMimetype JSString | UnknownMimetype JSString
                 deriving (Show)
 
 
 instance FromJSON Mimetype where
   parseJSON (String "text/plain") = pure Plaintext
-  parseJSON (String x) = pure $ UnknownMimetype $ showJS x
+  parseJSON (String x) = pure $ OtherMimetype $ showJS x
+  parseJSON x          = pure $ UnknownMimetype $ showJS x
+
+instance FromJSON GistId where
+  parseJSON (String x) = pure . GistId . text2jss $ x
+  parseJSON x          = mzero
+
+instance FromJSON Files where
+  parseJSON (Object x) = Files <$> mapM parseJSON (HM.elems x)
+  parseJSON x          = mzero
+
+instance FromJSON File where
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = Prelude.drop $ Prelude.length ("f_" :: String)}
 
 newtype Files = Files [File]
 
-deriving instance FromJSON Files
 deriving instance Show Files
 deriving instance GHC.Generic Files
 
-deriving instance FromJSON GistId
 deriving instance Show GistId
 deriving instance GHC.Generic GistId
 
 data File = 
   File 
-    { content  :: JSString
-    , filename     :: JSString
-    , language     :: JSString
-    , size     :: Int
-    , mimetype :: Mimetype 
-    } deriving (GHC.Generic, FromJSON, Show)
+    { f_content  :: JSString
+    , f_filename :: JSString
+    , f_language :: JSString
+    , f_size     :: Int
+    , f_type     :: Mimetype 
+    } deriving (GHC.Generic, Show)
 
 
 data Article = 
@@ -125,9 +141,9 @@ getAPI api path = do
     Left s       -> pure $ Left $ DatasourceError $ showJS s
     Right result -> case contents result of
       Nothing          -> pure $ Left $ DatasourceError "getAPI': No response"
-      Just byteString  -> case Data.Aeson.decodeStrict byteString of
-        Nothing -> pure $ Left $ DatasourceError $ "getAPI: Parse error " <> showJS byteString
-        Just x  -> pure $ Right x
+      Just byteString  -> case Data.Aeson.eitherDecodeStrict' byteString of
+        Left err -> pure $ Left $ DatasourceError $ "getAPI: Parse error " <> showJS err <> " in " <> showJS byteString
+        Right x  -> pure $ Right x
   where
     request requestURI = Request { reqMethod          = GET
                                  , reqURI             = requestURI

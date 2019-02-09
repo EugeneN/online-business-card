@@ -29,6 +29,8 @@ library
                      , aeson
                      , time
                      , bytestring
+                     , text
+                     , unordered-containers
   default-language:    Haskell2010
 
 executable business-demo
