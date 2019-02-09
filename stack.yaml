@@ -1,0 +1,32 @@
+resolver: lts-3.20
+compiler: ghcjs-0.2.0.20151230.3_ghc-7.10.2
+setup-info:
+ ghcjs:
+  source:
+   ghcjs-0.2.0.20151230.3_ghc-7.10.2:
+    url: "https://github.com/nrolland/ghcjs/releases/download/v.0.2.0.20151230.3/ghcjs-0.2.0.20151230.3.tar.gz"
+packages:
+- '.'
+
+extra-deps:
+- git: https://github.com/LubeckFRP/lubeck.git
+  commit: 2b6f5aa08f2eb298cd14e47edaa4b387f146e100
+  subdirs:
+  - lubeck-core
+  - lubeck-frp
+  - lubeck-drawing
+  - lubeck-dv
+  - lubeck-web
+- git: https://github.com/ghcjs/ghcjs-ffiqq.git
+  commit: da31b18582542fcfceade5ef6b2aca66662b9e20
+- git: https://github.com/EugeneN/virtual-dom.git
+  commit: ef22d73f79b9ae60fc2d182c098f2a777071b0f2
+- git: https://github.com/msakai/data-interval.git
+  commit: f57e950e53e5499f1cbc2609382521bf52105b5e
+- git: https://github.com/msakai/extended-reals.git
+  commit: c724f6fcece279873354f576b9099579cb42f8ec
+- git: https://github.com/EugeneN/ghcjs-base.git
+  commit: 861ef792b91063cf01daa573bcb4d96f4db0cf09
+- git: https://github.com/BeautifulDestinations/benchmark-hs.git
+  commit: dab13ed9e822dedf7ef80e16252be2be167e188b
+
