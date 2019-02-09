@@ -44,9 +44,15 @@ import qualified Components.Map                 as Map
 import           UICombinators
 import Utils
 
+import qualified Data.Tree as DT
+import qualified Data.Tree.Zipper as Z
+
 
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON
+
+instance ToJSON JSString where
+  toJSON = toJSON . textFromJSString
 
 data SiteConfig = SiteConfig 
         { rootGist :: GistId }
@@ -58,6 +64,12 @@ data ArticleStatus = ArtPending | ArtError DatasourceError | ArtReady Article
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
   (u, model) <- newSignal ArtPending
+
+  -- print $ DT.drawForest $ fmap (fmap show) thesite
+  let a = encode thesite
+  print a
+  let b = eitherDecode' a :: Either String (DT.Forest Page)
+  print $ show b
 
   let v = fmap view model
   void . forkIO $ do
@@ -81,6 +93,36 @@ siteComponent c = do
       
 
 --------------------------------------------------------------------------------
+type Url = JSString
+
+data Page = Page {
+    title      :: JSString
+  , path       :: Url
+  , dataSource :: GistId
+} deriving (GHC.Generic, ToJSON, FromJSON)
+
+instance Show Page where
+  show p = "Page " <> show (title p)
+
+blog1Page   = DT.Node (Page "Blog 1" "blog1" (GistId "?")) []
+blog2Page   = DT.Node (Page "Blog 2" "blog2" (GistId "?")) []
+aboutPage   = DT.Node (Page "About" "about" (GistId "b0bb1c06c091b06264f939748df0cf3a")) []
+cvPage      = DT.Node (Page "CV" "cv" (GistId "9fa2fe92a22a1fb3da0caf735c3afbe5")) []
+blogPage    = DT.Node (Page "Blog" "blog" (GistId "?")) [blog1Page, blog2Page]
+photosPage  = DT.Node (Page "Photos" "photos" (GistId "?")) []
+talksPage   = DT.Node (Page "Talks" "talks" (GistId "?")) []
+cmdPage   = DT.Node (Page "cmdPage" "cmdPage" (GistId "?")) []
+golPage   = DT.Node (Page "golPage" "golPage" (GistId "?")) []
+twicPage   = DT.Node (Page "twicPage" "twicPage" (GistId "?")) []
+mltoolPage   = DT.Node (Page "mltoolPage" "mltoolPage" (GistId "?")) []
+g4Page   = DT.Node (Page "g4Page" "g4Page" (GistId "?")) []
+appsPage    = DT.Node (Page "Apps" "apps" (GistId "?")) [cmdPage, golPage, twicPage, mltoolPage, g4Page]
+
+thesite = [aboutPage, photosPage, cvPage, blogPage, appsPage, talksPage]
+
+zip = Z.fromForest thesite 
+
+--------------------------------------------------------------------------------
 
 data Mimetype = Plaintext | OtherMimetype JSString | UnknownMimetype JSString
                 deriving (Show)
@@ -93,6 +135,9 @@ instance FromJSON Mimetype where
 instance FromJSON GistId where
   parseJSON (String x) = pure . GistId . text2jss $ x
   parseJSON x          = mzero
+
+instance ToJSON GistId where
+    toJSON (GistId x) = toJSON x
 
 instance FromJSON Files where
   parseJSON (Object x) = Files <$> mapM parseJSON (HM.elems x)

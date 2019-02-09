@@ -29,4 +29,5 @@ extra-deps:
   commit: 861ef792b91063cf01daa573bcb4d96f4db0cf09
 - git: https://github.com/BeautifulDestinations/benchmark-hs.git
   commit: dab13ed9e822dedf7ef80e16252be2be167e188b
+- rosezipper-0.2@sha256:aeff4e712360c5665747905381982a0765ba2c3831e352e8caeb951fc8c107b7
 
