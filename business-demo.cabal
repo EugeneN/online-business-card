@@ -16,7 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   ghc-options:         -Wall
-  exposed-modules:     Lib, UICombinators, Utils
+  exposed-modules:     Lib, UICombinators, Utils, Types, Net
   build-depends:       base
                      , lubeck-web
                      , lubeck-frp
