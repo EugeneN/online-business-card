@@ -10,6 +10,7 @@ import GHCJS.Types (JSString, JSVal)
 import Data.String (fromString)
 import Data.ByteString
 import Data.Monoid ((<>))
+import Data.Maybe (listToMaybe)
 import qualified Data.Text          as T  
 import qualified Data.JSString                  as JSS      
 import           Control.Concurrent             (forkIO)
@@ -37,7 +38,11 @@ import Types
 import Net
 
 
-data GistStatus = GistPending | GistError DatasourceError | GistReady Gist
+data GistStatus = GistPending | GistError DatasourceError | GistReady Menu Gist 
+
+type Menu = [[MenuItem]]
+
+data MenuItem = MISelected JSString | MIUnselected JSString deriving (Show)
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
@@ -50,11 +55,14 @@ siteComponent c = do
   subscribeEvent (updates stateModel') $ \(f, p) -> do
     print f
     print p
+    let menu = extractMenu f p
+    print menu
+
     case findTree f p of
       Nothing -> case (f, p) of
         ([], []) -> print "entering the forest" >> (viewU . GistError . DatasourceError $ "Entering the forest")
         (f, p) -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . DatasourceError $ "Got lost in the forest, sorry")
-      Just page -> loadGist_ viewU (dataSource page) $ viewU . GistReady 
+      Just page -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
 
   let v = fmap view viewModel
 
@@ -70,6 +78,18 @@ siteComponent c = do
   pure v
 
   where 
+    extractMenu :: DT.Forest Page -> Path -> Menu
+    extractMenu f [] = [fmap (MIUnselected . title . DT.rootLabel) f]
+    extractMenu f (p0:ps) = 
+      let topMenu = fmap (title . DT.rootLabel) f
+          topMenu' = fmap (\x -> if x == p0 then MISelected x else MIUnselected x) topMenu
+          subMenu = case ps of
+            [] -> []
+            ps' -> case listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f of
+                      Nothing -> []
+                      Just t -> extractMenu (DT.subForest t) ps'
+      in [topMenu', join subMenu]
+
     findTree :: DT.Forest Page -> Path -> Maybe Page
     findTree f p = case (f, p) of
       ([],_)       -> Nothing
@@ -92,7 +112,25 @@ siteComponent c = do
                              [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
                              , H.text "Loading" ]
     view (GistError (DatasourceError s)) = label s
-    view (GistReady a) = gistH $ unfiles $ files a
+    view (GistReady m a) = 
+      H.div [A.class_ "content"]
+            [H.div [A.class_ "section"]
+                   [ renderMenu m
+                   , gistH $ unfiles $ files a
+                   ]]
+
+    renderMenu :: Menu -> Html
+    renderMenu [] =  H.div [A.class_ "nav"] []
+    renderMenu xs = H.div [A.class_ "nav"] (go 0 xs)
+
+    go lvl [] = []
+    go lvl (m:sm) = 
+      [H.div [A.class_ $ "menu-level-" <> showJS lvl] 
+             (fmap menuItem m)
+      ] <> (go (lvl+1) sm)
+
+    menuItem (MISelected x) = H.a [A.class_ "current-menu-item", A.src "?"] [ H.text x ]
+    menuItem (MIUnselected x) = H.a [A.class_ "", A.src "?"] [ H.text x ]
 
     gistH :: [File] -> Html
     gistH as = H.div [] (join $ fmap renderFileH as)
