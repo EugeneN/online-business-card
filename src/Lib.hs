@@ -58,6 +58,7 @@ siteComponent c = do
     case findTree f p of
       Nothing -> case (f, p) of
         ([], []) -> print "entering the forest" >> (viewU . GistError . DatasourceError $ "Entering the forest")
+        (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu 
         (f, p) -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . DatasourceError $ "Roaming in the forest...")
       Just page -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
 
@@ -125,7 +126,7 @@ siteComponent c = do
              (fmap menuItem m)
       ] <> (go (lvl+1) sm)
 
-    menuItem (MISelected x ps) = H.a [A.class_ "current-menu-item", A.href ("/" <> JSS.intercalate "/" ps)] [ H.text x ]
+    menuItem (MISelected x ps) = H.a [A.class_ "current-menu-item", A.href ("#" <> JSS.intercalate "/" ps)] [ H.text x ]
     menuItem (MIUnselected x ps) = H.a [A.href ("#" <> JSS.intercalate "/" ps)] [ H.text x ]
 
     gistH :: [File] -> Html
