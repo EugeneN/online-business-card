@@ -42,7 +42,7 @@ data GistStatus = GistPending | GistError DatasourceError | GistReady Menu Gist
 
 type Menu = [[MenuItem]]
 
-data MenuItem = MISelected JSString | MIUnselected JSString deriving (Show)
+data MenuItem = MISelected JSString Path | MIUnselected JSString Path deriving (Show)
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
@@ -55,7 +55,7 @@ siteComponent c = do
   subscribeEvent (updates stateModel') $ \(f, p) -> do
     print f
     print p
-    let menu = extractMenu f p
+    let menu = extractMenu f p []
     print menu
 
     case findTree f p of
@@ -78,16 +78,16 @@ siteComponent c = do
   pure v
 
   where 
-    extractMenu :: DT.Forest Page -> Path -> Menu
-    extractMenu f [] = [fmap (MIUnselected . title . DT.rootLabel) f]
-    extractMenu f (p0:ps) = 
-      let topMenu = fmap (title . DT.rootLabel) f
-          topMenu' = fmap (\x -> if x == p0 then MISelected x else MIUnselected x) topMenu
+    extractMenu :: DT.Forest Page -> Path -> Path -> Menu
+    extractMenu f [] bc = [fmap (\x -> let p = DT.rootLabel x in MIUnselected (title p) (bc <> [path p])) f]
+    extractMenu f (p0:ps) bc = 
+      let topMenu = fmap DT.rootLabel f
+          topMenu' = fmap (\p -> if path p == p0 then MISelected (title p) (bc <> [path p]) else MIUnselected (title p) (bc <> [path p])) topMenu
           subMenu = case ps of
             [] -> []
             ps' -> case listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f of
                       Nothing -> []
-                      Just t -> extractMenu (DT.subForest t) ps'
+                      Just t -> extractMenu (DT.subForest t) ps' (bc <> [path $ DT.rootLabel t])
       in [topMenu', join subMenu]
 
     findTree :: DT.Forest Page -> Path -> Maybe Page
@@ -129,8 +129,8 @@ siteComponent c = do
              (fmap menuItem m)
       ] <> (go (lvl+1) sm)
 
-    menuItem (MISelected x) = H.a [A.class_ "current-menu-item", A.src "?"] [ H.text x ]
-    menuItem (MIUnselected x) = H.a [A.class_ "", A.src "?"] [ H.text x ]
+    menuItem (MISelected x ps) = H.a [A.class_ "current-menu-item", A.href ("/" <> JSS.intercalate "/" ps)] [ H.text x ]
+    menuItem (MIUnselected x ps) = H.a [A.href ("#" <> JSS.intercalate "/" ps)] [ H.text x ]
 
     gistH :: [File] -> Html
     gistH as = H.div [] (join $ fmap renderFileH as)
