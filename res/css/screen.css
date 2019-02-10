@@ -472,3 +472,19 @@ blockquote ul li {
   font-size: 80%;
   color: grey;
 }
+
+.loader-container {
+  position: relative;
+  top: 20px;
+  left: 20px;
+  margin: 0;
+  padding: 0;
+}
+
+.ajax-loader {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  margin-right: 5px;
+}

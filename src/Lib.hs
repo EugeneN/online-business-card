@@ -1,7 +1,4 @@
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE StandaloneDeriving      #-}
 {-# LANGUAGE GADTs              #-}
 
 module Lib
@@ -18,7 +15,6 @@ import           Control.Monad                  (void, join)
 import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom.Html.Attributes as A        
 import qualified Web.VirtualDom.Html.Events     as E  
-import           Lubeck.App                     (Html)
 import qualified Data.ByteString.Char8          as BS
 
 import Data.Aeson
@@ -37,11 +33,11 @@ import Types
 import Net
 
 
-data ArticleStatus = ArtPending | ArtError DatasourceError | ArtReady Gist
+data GistStatus = GistPending | GistError DatasourceError | GistReady Gist
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
-  (viewU, viewModel) <- newSignal ArtPending
+  (viewU, viewModel) <- newSignal GistPending
   (stateU, stateModel) <- newSignal Nothing :: Z.PosType t => FRP ( Sink (Maybe (DT.Forest Page, Z.TreePos t Page))
                                                                   , Signal (Maybe (DT.Forest Page, Z.TreePos t Page)))
 
@@ -49,20 +45,20 @@ siteComponent c = do
     print $ Z.label z
     let gist = dataSource $ Z.label z
     print gist
-    loadGist_ viewU gist $ viewU . ArtReady 
+    loadGist_ viewU gist $ viewU . GistReady 
 
   let v = fmap view viewModel
 
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
-      [] -> viewU $ ArtError $ DatasourceError "There are no files in this forest"
+      [] -> viewU $ GistError $ DatasourceError "There are no files in this forest"
       (f:fs) -> do
         let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
         print forest
         case forest of
-              Left err -> viewU $ ArtError $ DatasourceError $ JSS.pack err
+              Left err -> viewU $ GistError $ DatasourceError $ JSS.pack err
               Right forest' -> case Z.nextTree (Z.fromForest forest') of
-                                  Nothing -> viewU $ ArtError $ DatasourceError "There are no trees in this forest"
+                                  Nothing -> viewU $ GistError $ DatasourceError "There are no trees in this forest"
                                   Just x' -> do
                                     print forest'
                                     print x'
@@ -71,16 +67,18 @@ siteComponent c = do
   pure v
 
   where 
-    loadGist_ :: Sink ArticleStatus -> GistId -> (Gist -> IO ()) -> IO ()
+    loadGist_ :: Sink GistStatus -> GistId -> (Gist -> IO ()) -> IO ()
     loadGist_ viewU g f = void . forkIO $ do
       a <- loadGist g -- :: IO (Either DatasourceError a)
       case a of
-        Left x -> viewU $ ArtError x
+        Left x -> viewU $ GistError x
         Right a' -> f a'
 
-    view ArtPending = label "Pending"
-    view (ArtError (DatasourceError s)) = label s
-    view (ArtReady a) = gistH $ unfiles $ files a
+    view GistPending = H.div [A.class_ "loader-container"] 
+                             [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
+                             , H.text "Loading" ]
+    view (GistError (DatasourceError s)) = label s
+    view (GistReady a) = gistH $ unfiles $ files a
 
     gistH :: [File] -> Html
     gistH as = H.div [] (join $ fmap renderFileH as)
