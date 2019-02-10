@@ -61,7 +61,7 @@ siteComponent c = do
     case findTree f p of
       Nothing -> case (f, p) of
         ([], []) -> print "entering the forest" >> (viewU . GistError . DatasourceError $ "Entering the forest")
-        (f, p) -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . DatasourceError $ "Got lost in the forest, sorry")
+        (f, p) -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . DatasourceError $ "Roaming in the forest...")
       Just page -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
 
   let v = fmap view viewModel
@@ -83,11 +83,10 @@ siteComponent c = do
     extractMenu f (p0:ps) bc = 
       let topMenu = fmap DT.rootLabel f
           topMenu' = fmap (\p -> if path p == p0 then MISelected (title p) (bc <> [path p]) else MIUnselected (title p) (bc <> [path p])) topMenu
-          subMenu = case ps of
-            [] -> []
-            ps' -> case listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f of
-                      Nothing -> []
-                      Just t -> extractMenu (DT.subForest t) ps' (bc <> [path $ DT.rootLabel t])
+          curTree = listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f
+          subMenu = case curTree of
+            Nothing -> []
+            Just t -> extractMenu (DT.subForest t) ps (bc <> [path $ DT.rootLabel t])
       in [topMenu', join subMenu]
 
     findTree :: DT.Forest Page -> Path -> Maybe Page

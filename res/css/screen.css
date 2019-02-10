@@ -162,7 +162,7 @@ iframe {
   text-align: center;
   vertical-align: middle;
 }
-.logos img, img {
+.logos img {
   width: 75px;
   margin: 0 25px 0 25px;
   vertical-align: middle;
@@ -259,12 +259,19 @@ h6 img {
   margin: 2px;
 }
 
-h1 img {
+img.full-width {
   margin: 0;
   padding: 0;
   width: 100%;
   /*border: 1px solid #ccc;*/
   box-shadow: 0px 1px 10px #ccc;
+}
+img.full-width-no-shadow {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  /*border: 1px solid #ccc;*/
+  box-shadow: none;
 }
 
 h2 img {
