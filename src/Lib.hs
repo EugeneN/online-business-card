@@ -53,10 +53,7 @@ siteComponent c = do
   let stateModel' = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
 
   subscribeEvent (updates stateModel') $ \(f, p) -> do
-    print f
-    print p
     let menu = extractMenu f p []
-    print menu
 
     case findTree f p of
       Nothing -> case (f, p) of
