@@ -58,6 +58,8 @@ newtype GistId = GistId { getGistId :: JSString }
 
 type Url = JSString
 
+type Path = [Url]
+
 data Page = Page {
     title      :: JSString
   , path       :: Url
