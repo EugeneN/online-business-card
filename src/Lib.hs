@@ -9,6 +9,7 @@ module Lib
 import GHCJS.Types (JSString, JSVal)
 import Data.String (fromString)
 import Data.ByteString
+import Data.Monoid ((<>))
 import qualified Data.Text          as T  
 import qualified Data.JSString                  as JSS      
 import           Control.Concurrent             (forkIO)
@@ -50,7 +51,9 @@ siteComponent c = do
     print f
     print p
     case findTree f p of
-      Nothing -> print "path not found in the forest" >> (viewU . GistError . DatasourceError $ "Can't find the path in the forest")
+      Nothing -> case (f, p) of
+        ([], []) -> print "entering the forest" >> (viewU . GistError . DatasourceError $ "Entering the forest")
+        (f, p) -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . DatasourceError $ "Got lost in the forest, sorry")
       Just page -> loadGist_ viewU (dataSource page) $ viewU . GistReady 
 
   let v = fmap view viewModel
