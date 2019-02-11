@@ -146,6 +146,13 @@ data API = API {
 
 gistApi =   API "https://api.github.com/gists/" []
 
-newtype DatasourceError = DatasourceError JSString
+data DatasourceError = DatasourceError Menu JSString | NotFound Menu Path
 
 deriving instance Show DatasourceError
+
+
+type Menu = [[MenuItem]]
+
+emptyMenu = []
+
+data MenuItem = MISelected JSString Path | MIUnselected JSString Path deriving (Show)

@@ -40,9 +40,6 @@ import Net
 
 data GistStatus = GistPending | GistError DatasourceError | GistReady Menu Gist 
 
-type Menu = [[MenuItem]]
-
-data MenuItem = MISelected JSString Path | MIUnselected JSString Path deriving (Show)
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
@@ -57,20 +54,20 @@ siteComponent c = do
 
     case findTree f p of
       Nothing -> case (f, p) of
-        ([], []) -> print "entering the forest" >> (viewU . GistError . DatasourceError $ "Entering the forest")
+        ([], []) -> print "entering the forest" >> (viewU . GistError . DatasourceError menu $ "Entering the forest")
         (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu 
-        (f, p) -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . DatasourceError $ "Roaming in the forest...")
+        (f, p) -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . NotFound menu $ p)
       Just page -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
 
   let v = fmap view viewModel
 
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
-      [] -> viewU $ GistError $ DatasourceError "There are no files in this forest"
+      [] -> viewU $ GistError $ DatasourceError emptyMenu "There are no files in this forest"
       (f:fs) -> do
         let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
         case forest of
-              Left err -> viewU $ GistError $ DatasourceError $ JSS.pack err
+              Left err -> viewU $ GistError $ DatasourceError emptyMenu $ JSS.pack err
               Right forest' -> stateU forest'
 
   pure v
@@ -108,7 +105,26 @@ siteComponent c = do
     view GistPending = H.div [A.class_ "loader-container"] 
                              [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
                              , H.text "Loading" ]
-    view (GistError (DatasourceError s)) = label s
+    view (GistError (DatasourceError m s)) = 
+      H.div [A.class_ "content"]
+            [H.div [A.class_ "section"]
+                   [ renderMenu m
+                   , H.div [A.class_ "500"] 
+                           [ H.span [A.class_ "error-description"] [H.text "Error fetching data:"]
+                           , H.span [A.class_ "error-message"] [H.text s ]
+                           , H.span [A.class_ "error-sorry"] [H.text "Sorry for that."]
+                           ]
+                   ]]
+    view (GistError (NotFound m ps)) = 
+      H.div [A.class_ "content"]
+            [H.div [A.class_ "section"]
+                   [ renderMenu m
+                   , H.div [A.class_ "404"] 
+                           [ H.text "The path "
+                           , H.span [A.class_ "path"] [H.text $ renderPath ps ]
+                           , H.text " was not found."
+                           ]
+                   ]]
     view (GistReady m a) = 
       H.div [A.class_ "content"]
             [H.div [A.class_ "section"]
@@ -126,8 +142,10 @@ siteComponent c = do
              (fmap menuItem m)
       ] <> (go (lvl+1) sm)
 
-    menuItem (MISelected x ps) = H.a [A.class_ "current-menu-item", A.href ("#" <> JSS.intercalate "/" ps)] [ H.text x ]
-    menuItem (MIUnselected x ps) = H.a [A.href ("#" <> JSS.intercalate "/" ps)] [ H.text x ]
+    menuItem (MISelected x ps) = H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
+    menuItem (MIUnselected x ps) = H.a [A.href (renderPath ps)] [ H.text x ]
+
+    renderPath ps = "#" <> JSS.intercalate "/" ps
 
     gistH :: [File] -> Html
     gistH as = H.div [] (join $ fmap renderFileH as)
