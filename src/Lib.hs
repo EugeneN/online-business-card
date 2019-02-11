@@ -105,9 +105,9 @@ siteComponent c = do
 
     view (GistError (DatasourceError m s)) = 
       wrapper m $ H.div [A.class_ "s500"] 
-                        [ H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
-                        , H.span [A.class_ "error-message"] [H.text s ]
-                        , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
+                        [ -- H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
+                          H.span [A.class_ "error-message"] [H.text s ]
+                        -- , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
                         ]
                    
     view (GistError (Waiting m ps)) = 

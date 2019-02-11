@@ -565,7 +565,7 @@ ul.img-list {
 .error-message {
   display: block;
   font-style: italic;
-  color: red;
+  color: black;
   margin-top: 20px;
   margin-bottom: 20px;
 }
