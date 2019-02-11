@@ -573,3 +573,7 @@ ul.img-list {
 .error-sorry {
   display: block;
 }
+
+.s500, .s404 {
+  font-style: italic;
+}
