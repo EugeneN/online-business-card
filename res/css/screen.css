@@ -226,6 +226,7 @@ blockquote {
 }
 code {
   display: block;
+  white-space: pre;
 }
 .code {
   font-family: "Courier New", sans-serif;
@@ -364,6 +365,13 @@ blockquote ul li {
   text-align: center;
   font-size: 18px;
   font-family: ff-tisa-web-pro, georgia, serif;
+}
+
+.img-list li {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  border: none;
 }
 
 .img-list img {
