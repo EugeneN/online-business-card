@@ -165,11 +165,19 @@ iframe {
   vertical-align: middle;
 }
 .logos img {
-  width: 75px;
+  max-width: 75px;
   margin: 0 25px 0 25px;
   vertical-align: middle;
   display: inline-block;
 }
+
+.bd {
+  width: 50px;
+}
+.promua, .cisco, .pearson, .g4, .softserve {
+  width: 75px;
+}
+
 blockquote {
   text-align: center;
   margin-top: 3.14em;
@@ -505,4 +513,19 @@ blockquote ul li {
   margin: 0;
   padding: 0;
   margin-right: 5px;
+}
+
+.eugene {
+  width: 200px;
+  height: 200px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  margin-right: 20px;
+  margin-bottom: 20px;
+  float: left;
+}
+
+.iam {
+  padding-left: 220px;
 }
