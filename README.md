@@ -10,7 +10,7 @@
 ## View locally
 
 ```sh
-make open
+make serve
 
 ```
 

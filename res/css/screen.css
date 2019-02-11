@@ -375,16 +375,22 @@ blockquote ul li {
   font-family: ff-tisa-web-pro, georgia, serif;
 }
 
+ul.img-list {
+  margin: 0;
+  padding: 0;
+}
+
 .img-list li {
   list-style-type: none;
   padding: 0;
   margin: 0;
   border: none;
+  margin-bottom: 20px;
 }
 
 .img-list img {
   width: 100%;
-  margin: 20px;
+  margin: 0px;
   width: 100%;
   box-shadow: 0px 1px 10px #ccc;
 }
@@ -550,4 +556,20 @@ blockquote ul li {
   display: flex;  
   flex-direction: row;
   justify-content: flex-start;
+}
+
+.error-description {
+  display: block;
+}
+
+.error-message {
+  display: block;
+  font-style: italic;
+  color: red;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.error-sorry {
+  display: block;
 }

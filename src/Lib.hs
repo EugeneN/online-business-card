@@ -1,73 +1,69 @@
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE GADTs              #-}
+{-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE JavaScriptFFI              #-}
 
 module Lib
     ( siteComponent
     ) where
 
-import GHCJS.Types (JSString, JSVal)
-import Data.String (fromString)
-import Data.ByteString
-import Data.Monoid ((<>))
-import Data.Maybe (listToMaybe)
-import qualified Data.Text          as T  
+import           GHCJS.Types                    (JSString, JSVal)
+import           GHCJS.Foreign.Callback
+import           Data.Aeson
+import           Data.Aeson.Types
+import           Data.ByteString
+import qualified Data.ByteString.Char8          as BS
 import qualified Data.JSString                  as JSS      
+import           Data.Maybe                     (listToMaybe)
+import           Data.Monoid                    ((<>))
+import           Data.String                    (fromString)
+import qualified Data.Tree                      as DT
+import qualified Data.Tree.Zipper               as Z
+import qualified Data.Text                      as T  
 import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void, join)
 import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom.Html.Attributes as A        
 import qualified Web.VirtualDom.Html.Events     as E  
-import qualified Data.ByteString.Char8          as BS
-import           GHCJS.Foreign.Callback
-
-import Data.Aeson
-import Data.Aeson.Types
 
 import           Lubeck.App                     (Html)
 import           Lubeck.FRP                     
 import           Lubeck.Util                    (showJS)
 import           Lubeck.Web.URI                 (decodeURIComponent)
 import           UICombinators
-import Utils
 
-import qualified Data.Tree as DT
-import qualified Data.Tree.Zipper as Z
-
-import Types
-import Net
+import           Net
+import           Types
+import           Utils
 
 
 data GistStatus = GistPending | GistError DatasourceError | GistReady Menu Gist 
 
-
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
   navS <- navComp 
-  (viewU, viewModel) <- newSignal GistPending
+  (viewU, viewModel)   <- newSignal GistPending
   (stateU, stateModel) <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
 
   let stateModel' = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
 
-  subscribeEvent (updates stateModel') $ \(f, p) -> do
+  subscribeEvent (updates stateModel') $ \(f, p) -> 
     let menu = extractMenu f p []
-
-    case findTree f p of
-      Nothing -> case (f, p) of
-        ([], []) -> print "entering the forest" >> (viewU . GistError . DatasourceError menu $ "Entering the forest")
-        (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu 
-        ([], p) -> print "waiting tor the forest to grow" >> (viewU . GistError . Waiting menu $ p)
-        (f, p)  -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . NotFound menu $ p)
-      Just page -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
+    in case findTreeByPath f p of
+          Nothing -> case (f, p) of
+            ([], [])           -> viewU . GistError $ DatasourceError menu "Entering the forest"
+            (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu 
+            ([], p)            -> viewU . GistError . Waiting menu $ p
+            (f,  p)            -> viewU . GistError . NotFound menu $ p
+          Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
 
   let v = fmap view viewModel
 
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
       [] -> viewU $ GistError $ DatasourceError emptyMenu "There are no files in this forest"
-      (f:fs) -> do
+      (f:fs) -> 
         let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
-        case forest of
+        in case forest of
               Left err -> viewU $ GistError $ DatasourceError emptyMenu $ JSS.pack err
               Right forest' -> stateU forest'
 
@@ -77,24 +73,24 @@ siteComponent c = do
     extractMenu :: DT.Forest Page -> Path -> Path -> Menu
     extractMenu f [] bc = [fmap (\x -> let p = DT.rootLabel x in MIUnselected (title p) (bc <> [path p])) f]
     extractMenu f (p0:ps) bc = 
-      let topMenu = fmap DT.rootLabel f
-          topMenu' = fmap (\p -> if path p == p0 then MISelected (title p) (bc <> [path p]) else MIUnselected (title p) (bc <> [path p])) topMenu
-          curTree = listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f
-          subMenu = case curTree of
-            Nothing -> []
-            Just t -> extractMenu (DT.subForest t) ps (bc <> [path $ DT.rootLabel t])
+      let topMenu  = fmap DT.rootLabel f
+          topMenu' = fmap (\p -> if path p == p0 then MISelected   (title p) (bc <> [path p]) 
+                                                 else MIUnselected (title p) (bc <> [path p])) topMenu
+          curTree  = listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f
+          subMenu  = case curTree of
+                        Nothing -> []
+                        Just t -> extractMenu (DT.subForest t) ps (bc <> [path $ DT.rootLabel t])
       in [topMenu', join subMenu]
 
-    findTree :: DT.Forest Page -> Path -> Maybe Page
-    findTree f p = case (f, p) of
-      ([],_)       -> Nothing
-      (x:xs, [])   -> Just $ DT.rootLabel x
-      (xs, y:ys) -> let z = Prelude.filter ((y ==) . path . DT.rootLabel) xs
-                    in case z of
-                         [] -> Nothing
-                         x:xs -> case ys of
-                                   []  -> Just $ DT.rootLabel x
-                                   ys' -> findTree (DT.subForest x) ys'
+    findTreeByPath :: DT.Forest Page -> Path -> Maybe Page
+    findTreeByPath f p = case (f, p) of
+      ([],_)     -> Nothing
+      (x:xs, []) -> Just $ DT.rootLabel x
+      (xs, y:ys) -> case Prelude.filter ((y ==) . path . DT.rootLabel) xs of
+                      [] -> Nothing
+                      x:xs -> case ys of
+                                []  -> Just $ DT.rootLabel x
+                                ys' -> findTreeByPath (DT.subForest x) ys'
 
     loadGist_ :: Sink GistStatus -> GistId -> (Gist -> IO ()) -> IO ()
     loadGist_ viewU g f = void . forkIO $ do
@@ -106,54 +102,47 @@ siteComponent c = do
     view GistPending = H.div [A.class_ "loader-container"] 
                              [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
                              , H.text "Loading" ]
+
     view (GistError (DatasourceError m s)) = 
-      H.div [A.class_ "content"]
-            [H.div [A.class_ "section"]
-                   [ renderMenu m
-                   , H.div [A.class_ "500"] 
-                           [ H.span [A.class_ "error-description"] [H.text "Error fetching data:"]
-                           , H.span [A.class_ "error-message"] [H.text s ]
-                           , H.span [A.class_ "error-sorry"] [H.text "Sorry for that."]
-                           ]
-                   ]]
+      wrapper m $ H.div [A.class_ "500"] 
+                        [ H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
+                        , H.span [A.class_ "error-message"] [H.text s ]
+                        , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
+                        ]
+                   
     view (GistError (Waiting m ps)) = 
-      H.div [A.class_ "content"]
-            [H.div [A.class_ "section"]
-                   [ renderMenu m
-                   , H.div [A.class_ "404"] 
-                           [ H.text "Waiting for the forest to grow at the path "
-                           , H.span [A.class_ "path"] [H.text $ renderPath ps ]
-                           , H.text "."
-                           ]
-                   ]]
+      wrapper m $ H.div [A.class_ "404"] 
+                        [ H.text "Waiting for the forest to grow up at the path "
+                        , H.span [A.class_ "path"] [H.text $ renderPath ps ]
+                        , H.text "."
+                        ]
+                   
     view (GistError (NotFound m ps)) = 
-      H.div [A.class_ "content"]
-            [H.div [A.class_ "section"]
-                   [ renderMenu m
-                   , H.div [A.class_ "404"] 
-                           [ H.text "The path "
-                           , H.span [A.class_ "path"] [H.text $ renderPath ps ]
-                           , H.text " was not found."
-                           ]
-                   ]]
+      wrapper m $ H.div [A.class_ "404"] 
+                    [ H.text "The path "
+                    , H.span [A.class_ "path"] [H.text $ renderPath ps ]
+                    , H.text " was not found in this forest."
+                    ]
+      
     view (GistReady m a) = 
+      wrapper m (gistH $ unfiles $ files a)
+      
+    wrapper m b = 
       H.div [A.class_ "content"]
             [H.div [A.class_ "section"]
-                   [ renderMenu m
-                   , gistH $ unfiles $ files a
-                   ]]
+                   [ renderMenu m, b ]]
 
     renderMenu :: Menu -> Html
-    renderMenu [] =  H.div [A.class_ "nav"] []
+    renderMenu [] = H.div [A.class_ "nav"] []
     renderMenu xs = H.div [A.class_ "nav"] (go 0 xs)
 
-    go lvl [] = []
+    go lvl []     = []
     go lvl (m:sm) = 
       [H.div [A.class_ $ "menu-level-" <> showJS lvl] 
              (fmap menuItem m)
       ] <> (go (lvl+1) sm)
 
-    menuItem (MISelected x ps) = H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
+    menuItem (MISelected x ps)   = H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
     menuItem (MIUnselected x ps) = H.a [A.href (renderPath ps)] [ H.text x ]
 
     renderPath ps = "#" <> JSS.intercalate "/" ps
@@ -184,18 +173,18 @@ navComp = do
 
   where
     -- handleState   u = u . fmap decodeURIComponent . unpackWindowHistory . toWH
-    handleLocHash u = u . fmap decodeURIComponent . splitLocationHash . extractNewHash
+    handleLocHash u  = u . fmap decodeURIComponent . splitLocationHash . extractNewHash
     handleLocHash' u = u . fmap decodeURIComponent . splitLocationHash 
 
 
 
-foreign import javascript unsafe "var f = $1; window.onpopstate = function(e) { console.log(e, f); f(e.state) };"
+foreign import javascript unsafe "var f = $1; window.onpopstate = function(e) { f(e.state) };"
   onPopstate :: Callback (JSVal -> IO ()) -> IO ()    
   
 unpackWindowHistory :: WindowHistory -> [JSString]
 unpackWindowHistory wh = xs
   where
-    xs = fmap (getWHChunk wh) [0..pred len]
+    xs  = fmap (getWHChunk wh) [0..pred len]
     len = whLength wh
 
 mkCallback :: (JSVal -> IO ()) -> IO (Callback (JSVal -> IO ()))

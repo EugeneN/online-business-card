@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Utils 
  ( htmlStringToVirtualDom
@@ -8,19 +8,19 @@ module Utils
  ) where
 
 import           Data.JSString                  (JSString)
+import qualified Data.JSString                  as JSS  
+import           Data.Monoid ((<>))
+import qualified Data.Text                      as T
+
+import qualified Text.XML.Light.Input           as XMLI
+import qualified Text.XML.Light.Types           as XMLT
+
 import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom.Html.Attributes as A        
 import qualified Web.VirtualDom.Html.Events     as E   
 import qualified Web.VirtualDom                 as VirtualDom
 
 import           Lubeck.App                     (Html)
-import qualified Data.JSString                  as JSS  
-
-import qualified Text.XML.Light.Input           as XMLI
-import qualified Text.XML.Light.Types           as XMLT
-import Data.Monoid ((<>))
-import qualified Data.Text                      as T
-
 import           Lubeck.FRP   
 
 
@@ -48,7 +48,7 @@ validTags = [ "address" , "article" , "body" , "footer" , "header" , "h1" , "h2"
 
 validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" , "target" , "width" , "height" , "min" , "max", "pluginspage"]
 
-isValidTag x  = x `elem` validTags
+isValidTag      x = x `elem` validTags
 isValidAttrName x = x `elem` validAttrs
 -- TODO validate attr content, to prevent dynamic, scripting content etc
 -- https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet
