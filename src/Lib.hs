@@ -56,7 +56,8 @@ siteComponent c = do
       Nothing -> case (f, p) of
         ([], []) -> print "entering the forest" >> (viewU . GistError . DatasourceError menu $ "Entering the forest")
         (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu 
-        (f, p) -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . NotFound menu $ p)
+        ([], p) -> print "waiting tor the forest to grow" >> (viewU . GistError . Waiting menu $ p)
+        (f, p)  -> print ("path not found in the forest" <> show (f,p)) >> (viewU . GistError . NotFound menu $ p)
       Just page -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
 
   let v = fmap view viewModel
@@ -113,6 +114,16 @@ siteComponent c = do
                            [ H.span [A.class_ "error-description"] [H.text "Error fetching data:"]
                            , H.span [A.class_ "error-message"] [H.text s ]
                            , H.span [A.class_ "error-sorry"] [H.text "Sorry for that."]
+                           ]
+                   ]]
+    view (GistError (Waiting m ps)) = 
+      H.div [A.class_ "content"]
+            [H.div [A.class_ "section"]
+                   [ renderMenu m
+                   , H.div [A.class_ "404"] 
+                           [ H.text "Waiting for the forest to grow at the path "
+                           , H.span [A.class_ "path"] [H.text $ renderPath ps ]
+                           , H.text "."
                            ]
                    ]]
     view (GistError (NotFound m ps)) = 

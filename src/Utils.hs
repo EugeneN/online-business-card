@@ -44,9 +44,9 @@ validTags = [ "address" , "article" , "body" , "footer" , "header" , "h1" , "h2"
             , "col" , "colgroup" , "table" , "tbody" , "td" , "tfoot" , "th" , "thead"
             , "tr" , "datalist" , "fieldset"
             , "label" , "legend" , "meter" , "optgroup" , "option"
-            , "details" , "summary", "blockquote"]
+            , "details" , "summary", "blockquote", "embed"]
 
-validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" , "target" , "width" , "height" , "min" , "max"]
+validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" , "target" , "width" , "height" , "min" , "max", "pluginspage"]
 
 isValidTag x  = x `elem` validTags
 isValidAttrName x = x `elem` validAttrs
