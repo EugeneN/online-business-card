@@ -44,7 +44,7 @@ validTags = [ "address" , "article" , "body" , "footer" , "header" , "h1" , "h2"
             , "col" , "colgroup" , "table" , "tbody" , "td" , "tfoot" , "th" , "thead"
             , "tr" , "datalist" , "fieldset"
             , "label" , "legend" , "meter" , "optgroup" , "option"
-            , "details" , "summary", "blockquote", "embed"]
+            , "details" , "summary", "blockquote", "embed", "iframe"]
 
 validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" , "target" , "width" , "height" , "min" , "max", "pluginspage"]
 
