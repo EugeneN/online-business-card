@@ -39,10 +39,9 @@ siteComponent c = do
 
   let model = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
 
-  void $ subscribeEvent (updates model) $ \(f, p) -> do
+  void $ subscribeEvent (updates model) $ \(f, p) -> 
     let menu = extractMenu f p []
-    print menu
-    case findTreeByPath f p of
+    in case findTreeByPath f p of
           Nothing -> case (f, p) of
             ([], [])           -> viewU . GistError $ DatasourceError menu "Entering the forest"
             (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu 
