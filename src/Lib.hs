@@ -94,10 +94,12 @@ siteComponent c = do
 
     loadGist_ :: Sink GistStatus -> GistId -> (Gist -> IO ()) -> IO ()
     loadGist_ viewU g f = void . forkIO $ do
-      a <- loadGist g -- :: IO (Either DatasourceError a)
+      a <- loadGist g :: IO (Either DatasourceError ApiResult)
       case a of
         Left x -> viewU $ GistError x
-        Right a' -> f a'
+        Right a' -> case a' of
+                      Left  m -> viewU $ GistError $ DatasourceError emptyMenu (message m)
+                      Right a'' -> f a''
 
     view GistPending = H.div [A.class_ "loader-container"] 
                              [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []

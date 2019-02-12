@@ -3,6 +3,8 @@
 {-# LANGUAGE DeriveAnyClass     #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE GADTs              #-}
+{-# LANGUAGE TypeSynonymInstances              #-}
+{-# LANGUAGE FlexibleInstances              #-}
 
 module Types where
 
@@ -16,6 +18,7 @@ import           Control.Monad.Except
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.ByteString
+import           Data.Foldable                  (asum)
 import           Data.JSString.Text             (textFromJSString, textToJSString)
 import qualified Data.HashMap.Strict            as HM    
 import           Data.Monoid                    ((<>))
@@ -109,6 +112,21 @@ data Gist =
     , description :: JSString
     , files       :: Files 
     } deriving (GHC.Generic, FromJSON, Show)
+
+type ApiResult = Either Message Gist
+
+data Message = Message 
+    { message           :: JSString
+    , documentation_url :: Maybe JSString
+    } deriving (GHC.Generic, FromJSON, Show)
+
+instance FromJSON ApiResult where
+  parseJSON o@(Object _) =  
+    asum [ Right <$> (parseJSON o :: Parser Gist)
+         , Left <$> (parseJSON o :: Parser Message)
+         ]   
+    
+  parseJSON x = typeMismatch "Gist" x
 
 type Header = (JSString, JSString) 
 
