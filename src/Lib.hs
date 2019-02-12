@@ -34,22 +34,22 @@ data GistStatus = GistPending | GistError DatasourceError | GistReady Menu Gist
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
   navS <- navComp 
+  tU   <- titleComponent
   (viewU, viewModel)   <- newSignal GistPending
   (stateU, stateModel) <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
 
   let model = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
-
+  let v     = fmap view viewModel
+  
   void $ subscribeEvent (updates model) $ \(f, p) -> 
     let menu = extractMenu f p []
     in case findTreeByPath f p of
           Nothing -> case (f, p) of
-            ([], [])           -> viewU . GistError $ DatasourceError menu "Entering the forest"
-            (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu 
-            ([], p')           -> viewU . GistError . Waiting menu $ p'
-            (_,  p')           -> viewU . GistError . NotFound menu $ p'
-          Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
-
-  let v = fmap view viewModel
+            ([], [])           -> tU menu >> (viewU . GistError $ DatasourceError menu "Entering the forest")
+            (_, "blog":bid:[]) -> tU menu >> (loadGist_ viewU (GistId bid) $ viewU . GistReady menu)
+            ([], p')           -> tU menu >> (viewU . GistError . Waiting menu $ p')
+            (_,  p')           -> tU menu >> (viewU . GistError . NotFound menu $ p')
+          Just page            -> tU menu >> (loadGist_ viewU (dataSource page) $ viewU . GistReady menu)
 
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
@@ -165,13 +165,40 @@ siteComponent c = do
 
 --------------------------------------------------------------------------------
 
+titleComponent :: FRP (Sink Menu)
+titleComponent = do
+  (u, s) <- newSignal emptyMenu
+  let s' = fmap (JSS.intercalate " ← " . reverse . ("EN" :) . fmap getTitle . flattenMenu) s
+
+  void $ subscribeEvent (updates s') setTitle
+
+  pure u
+
+  where
+    flattenMenu MenuNil          = []
+    flattenMenu (Menu m MenuNil) = findSelectedItem m
+    flattenMenu (Menu m sm)      = findSelectedItem m <> flattenMenu sm
+
+    findSelectedItem (MenuLevel xs) = Prelude.filter isSelected xs
+
+    isSelected (MISelected   _ _) = True
+    isSelected (MIUnselected _ _) = False
+    
+    getTitle (MISelected   x _) = x
+    getTitle (MIUnselected x _) = x
+
+foreign import javascript unsafe "document.title = $1"
+  setTitle :: JSString -> IO ()
+
+--------------------------------------------------------------------------------
+
 
 navComp :: IO (Signal Path)
 navComp = do
   (u, s) <- newSignal [] :: FRP (Sink Path, Signal Path)
 
   onUrlHashChange =<< mkCallback (handleLocHash u)
-  void . forkIO $ getUrlHash >>=  handleLocHash' u
+  void . forkIO $ getUrlHash >>= handleLocHash' u
 
   pure s
 
