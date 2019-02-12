@@ -17,9 +17,10 @@ import qualified Data.Tree                      as DT
 import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void, join)
 import qualified Web.VirtualDom.Html            as H
-import qualified Web.VirtualDom.Html.Attributes as A        
+import qualified Web.VirtualDom.Html.Attributes as A    
+import qualified Web.VirtualDom.Html.Events     as E    
 
-import           Lubeck.App                     (Html)
+import           Lubeck.App                     (Html, KbdEvents(..))
 import           Lubeck.FRP                     
 import           Lubeck.Util                    (showJS)
 import           Lubeck.Web.URI                 (decodeURIComponent)
@@ -27,29 +28,57 @@ import           Lubeck.Web.URI                 (decodeURIComponent)
 import           Net
 import           Types
 import           Utils
+import           UICombinators
 
 
 data GistStatus = GistPending | GistError DatasourceError | GistReady Menu Gist 
 
-siteComponent :: SiteConfig -> FRP (Signal Html)
+data RenderMode = RView | REditMenu | REditContent
+
+data EditCmd = DontSubmit GistId JSString | Submit GistId JSString deriving (Show)
+
+siteComponent :: SiteConfig -> FRP (Signal Html, Maybe (Sink KbdEvents))
 siteComponent c = do
-  navS <- navComp 
-  tU   <- titleComponent
+  navS                 <- navComp 
+  tU                   <- titleComponent
   (viewU, viewModel)   <- newSignal GistPending
   (stateU, stateModel) <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
+  (rmodeU, rmodeS)     <- newSignal RView
+  (editU, editS)       <- newSignal Nothing -- Maybe EditCmd
+  (kbdU,  kbdEv)       <- newEvent
 
-  let model = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
-  let v     = fmap view viewModel
+  subscribeEvent (updates editS) $ \cmd -> 
+    case cmd of
+      Nothing -> print "Nothing in editor buffer"
+      Just (DontSubmit i b) -> print cmd
+      Just (Submit g b) -> do
+        print b
+        print g
+        print "save gist"
+        print "load gist"
+        rmodeU RView
+        editU Nothing
+
+  subscribeEvent kbdEv $ \(Key x) -> 
+    case x of
+      69 -> rmodeU REditContent -- 'e'
+      27 -> rmodeU RView -- 'e'
+      x  -> print x
+
+  let model       = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
+  let renderModel = (,,) <$> viewModel <*> rmodeS <*> editS :: Signal (GistStatus, RenderMode, Maybe (EditCmd))                                                 
+  let v           = fmap (view rmodeU editU) renderModel
   
-  void $ subscribeEvent (updates model) $ \(f, p) -> 
+  void $ subscribeEvent (updates model) $ \(f, p) -> do
     let menu = extractMenu f p []
-    in case findTreeByPath f p of
-          Nothing -> case (f, p) of
-            ([], [])           -> tU menu >> (viewU . GistError $ DatasourceError menu "Entering the forest")
-            (_, "blog":bid:[]) -> tU menu >> (loadGist_ viewU (GistId bid) $ viewU . GistReady menu)
-            ([], p')           -> tU menu >> (viewU . GistError . Waiting menu $ p')
-            (_,  p')           -> tU menu >> (viewU . GistError . NotFound menu $ p')
-          Just page            -> tU menu >> (loadGist_ viewU (dataSource page) $ viewU . GistReady menu)
+    tU menu
+    case findTreeByPath f p of
+      Nothing -> case (f, p) of
+        ([], [])           -> viewU . GistError $ DatasourceError menu "Entering the forest"
+        (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu
+        ([], p')           -> viewU . GistError . Waiting menu $ p'
+        (_,  p')           -> viewU . GistError . NotFound menu $ p'
+      Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu
 
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
@@ -60,7 +89,7 @@ siteComponent c = do
               Left err      -> viewU $ GistError $ DatasourceError emptyMenu $ JSS.pack err
               Right forest' -> stateU forest'
 
-  pure v
+  pure (v, Just kbdU)
 
   where 
     treeToMenuItem :: Path -> DT.Tree Page -> MenuItem
@@ -101,43 +130,44 @@ siteComponent c = do
                       Left  m   -> viewU $ GistError $ DatasourceError emptyMenu (message m)
                       Right a'' -> f a''
 
-    view :: GistStatus -> Html
-    view GistPending = H.div [A.class_ "loader-container"] 
-                             [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
-                             , H.text "Loading" ]
+    view :: Sink RenderMode -> Sink (Maybe EditCmd) -> (GistStatus, RenderMode, Maybe EditCmd) -> Html
+    view u eu (GistPending, _, _) = 
+      H.div [A.class_ "loader-container"] 
+            [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
+            , H.text "Loading" ]
 
-    view (GistError (DatasourceError m s)) = 
-      wrapper m $ H.div [A.class_ "s500"] 
+    view u eu (GistError (DatasourceError m s), rm, _) = 
+      wrapper u eu rm m $ H.div [A.class_ "s500"] 
                         [ -- H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
                           H.span [A.class_ "error-message"] [H.text s ]
                         -- , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
                         ]
                    
-    view (GistError (Waiting m ps)) = 
-      wrapper m $ H.div [A.class_ "s404"] 
+    view u eu (GistError (Waiting m ps), rm, _) = 
+      wrapper u eu rm m $ H.div [A.class_ "s404"] 
                         [ H.text "Waiting for the forest to grow up at the path "
                         , H.span [A.class_ "path"] [H.text $ renderPath ps ]
                         , H.text "."
                         ]
                    
-    view (GistError (NotFound m ps)) = 
-      wrapper m $ H.div [A.class_ "s404"] 
+    view u eu (GistError (NotFound m ps), rm, _) = 
+      wrapper u eu rm m $ H.div [A.class_ "s404"] 
                     [ H.text "The path "
                     , H.span [A.class_ "path"] [H.text $ renderPath ps ]
                     , H.text " was not found in this forest."
                     ]
       
-    view (GistReady m a) = 
-      wrapper m (gistH $ unfiles $ files a)
+    view u eu (GistReady m g, rm, eb) = 
+      wrapper u eu rm m (gistH u eu rm g eb)
     
-    wrapper :: Menu -> Html -> Html
-    wrapper m b = 
+    wrapper :: Sink RenderMode -> Sink (Maybe EditCmd) -> RenderMode -> Menu -> Html -> Html
+    wrapper u eu rm m b = 
       H.div [A.class_ "content"]
             [H.div [A.class_ "section"]
-                   [ renderMenu m, b ]]
+                   [ renderMenu u eu rm m, b ]]
 
-    renderMenu :: Menu -> Html
-    renderMenu m = H.div [A.class_ "nav"] (renderSubMenu 0 m)
+    renderMenu :: Sink RenderMode -> Sink (Maybe EditCmd) -> RenderMode -> Menu -> Html
+    renderMenu _ _ _ m = H.div [A.class_ "nav"] (renderSubMenu 0 m)
 
     renderSubMenu :: Int -> Menu -> [Html]
     renderSubMenu _ MenuNil                       = []
@@ -156,11 +186,21 @@ siteComponent c = do
     renderPath :: Path -> JSString
     renderPath ps = "#" <> JSS.intercalate "/" ps
 
-    gistH :: [File] -> Html
-    gistH as = H.div [] (join $ fmap renderFileH as)
+    gistH :: Sink RenderMode -> Sink (Maybe EditCmd) -> RenderMode -> Gist -> Maybe EditCmd -> Html
+    gistH u eu rm g eb = H.div [] (join $ fmap (renderFileH u eu rm (Types.id g) eb) (unfiles . files $ g))
               
-    renderFileH :: File -> [Html]
-    renderFileH f = htmlStringToVirtualDom $ f_content f
+    renderFileH :: Sink RenderMode -> Sink (Maybe EditCmd) -> RenderMode -> GistId -> Maybe EditCmd -> File -> [Html]
+    renderFileH e eu REditContent gi eb f = 
+      let z = case eb of
+                Just (DontSubmit a b) -> eu $ Just $ Submit a b
+                Just (Submit a b)     -> eu $ Just $ Submit a b
+                Nothing               -> pure ()
+      in
+      [ H.button [A.class_ "edit-cancel", E.click $ \_ -> e RView] [H.text "Cancel"]
+      , H.button [A.class_ "edit-save", E.click $ \_ -> z] [H.text "Save"]
+      , richEditorWidget True (contramapSink (Just . DontSubmit gi) eu) $ f_content f
+      ]
+    renderFileH _ _  _            _  _ f = htmlStringToVirtualDom $ f_content f
       
 
 --------------------------------------------------------------------------------

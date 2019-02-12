@@ -37,6 +37,7 @@ data SiteConfig =
 newtype GistId = 
   GistId 
     { getGistId :: JSString }  
+  deriving (Eq)
 
 type Url = JSString
 
