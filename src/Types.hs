@@ -1,10 +1,10 @@
-{-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE DeriveGeneric      #-}
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE TypeSynonymInstances              #-}
-{-# LANGUAGE FlexibleInstances              #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances    #-}
 
 module Types where
 
