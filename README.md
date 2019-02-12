@@ -1,16 +1,15 @@
 
-# FRP demo
+# Online Business Card application
 
-## To build
+## Build
 
-- Get Stack
+- Get Stack, make
 - `stack setup` to get GHCJS etc
-- `stack build`
+- `make all`
 
 ## View locally
 
-```sh
-make serve
+- ` make serve `
 
-```
+  This command makes use of `sws` - a simple Haskell web server - to serve static content from the `dist` directory. If you have no `sws` installed feel free to use any other preferred web server serving files from the same directory.
 
