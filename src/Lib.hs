@@ -45,8 +45,8 @@ siteComponent c = do
           Nothing -> case (f, p) of
             ([], [])           -> viewU . GistError $ DatasourceError menu "Entering the forest"
             (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu 
-            ([], p')            -> viewU . GistError . Waiting menu $ p'
-            (_,  p')            -> viewU . GistError . NotFound menu $ p'
+            ([], p')           -> viewU . GistError . Waiting menu $ p'
+            (_,  p')           -> viewU . GistError . NotFound menu $ p'
           Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
 
   let v = fmap view viewModel
