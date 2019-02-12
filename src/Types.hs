@@ -30,26 +30,33 @@ instance FromJSON JSString where
 instance ToJSON JSString where
   toJSON = toJSON . textFromJSString
 
-data SiteConfig = SiteConfig 
-  { rootGist :: GistId }
+data SiteConfig = 
+  SiteConfig 
+    { rootGist :: GistId }
 
-newtype GistId = GistId { getGistId :: JSString }  
+newtype GistId = 
+  GistId 
+    { getGistId :: JSString }  
 
 type Url = JSString
 
 type Path = [Url]
 
-data Page = Page {
-    title      :: JSString
-  , path       :: Url
-  , dataSource :: GistId
-} deriving (GHC.Generic, ToJSON, FromJSON)
+data Page = 
+  Page 
+    { title      :: JSString
+    , path       :: Url
+    , dataSource :: GistId
+    } deriving (GHC.Generic, ToJSON, FromJSON)
 
 instance Show Page where
   show p = "Page " <> show (title p)
 
-data Mimetype = Plaintext | OtherMimetype JSString | UnknownMimetype JSString
-                deriving (Show)
+data Mimetype = 
+    Plaintext 
+  | OtherMimetype JSString 
+  | UnknownMimetype JSString
+  deriving (Show)
 
 instance FromJSON Mimetype where
   parseJSON (String "text/plain") = pure Plaintext
@@ -70,7 +77,9 @@ instance FromJSON Files where
 instance FromJSON File where
   parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = Prelude.drop $ Prelude.length ("f_" :: String)}
 
-newtype Files = Files { unfiles :: [File]}
+newtype Files = 
+  Files 
+    { unfiles :: [File]}
 
 deriving instance Show Files
 
@@ -97,7 +106,8 @@ data Gist =
 
 type ApiResult = Either Message Gist
 
-data Message = Message 
+data Message = 
+  Message 
     { message           :: JSString
     , documentation_url :: Maybe JSString
     } deriving (GHC.Generic, FromJSON, Show)
@@ -112,28 +122,39 @@ instance FromJSON ApiResult where
 
 type Header = (JSString, JSString) 
 
-data API = API {
-    baseURL :: JSString
-  , headers :: [Header]
-}
+data API = 
+  API 
+    { baseURL :: JSString
+    , headers :: [Header]
+    }
 
 gistApi :: API
-gistApi =   API "https://api.github.com/gists/" []
+gistApi = API "https://api.github.com/gists/" []
 
-data DatasourceError = DatasourceError Menu JSString | NotFound Menu Path | Waiting  Menu Path
+data DatasourceError = 
+    DatasourceError Menu JSString 
+  | NotFound Menu Path 
+  | Waiting  Menu Path
 
 -- deriving instance Show DatasourceError
 
-newtype MenuLevel = MenuLevel { unlevel :: [MenuItem] }
+newtype MenuLevel = 
+  MenuLevel 
+    { unlevel :: [MenuItem] }
   deriving (Show)
-data Menu = Menu MenuLevel Menu 
-          | MenuNil
+
+data Menu = 
+    Menu MenuLevel Menu 
+  | MenuNil
   deriving (Show)
 
 emptyMenu :: Menu
 emptyMenu = Menu (MenuLevel []) MenuNil
 
-data MenuItem = MISelected JSString Path | MIUnselected JSString Path deriving (Show)
+data MenuItem = 
+    MISelected JSString Path 
+  | MIUnselected JSString Path 
+  deriving (Show)
 
 -- blog1Page   = DT.Node (Page "Blog 1" "blog1" (GistId "?")) []
 -- blog2Page   = DT.Node (Page "Blog 2" "blog2" (GistId "?")) []

@@ -21,6 +21,7 @@ import qualified Web.VirtualDom                 as VirtualDom
 import           Lubeck.App                     (Html)
 import           Lubeck.FRP   
 
+
 jss2text :: JSString -> T.Text
 jss2text = T.pack . JSS.unpack
 
@@ -51,7 +52,8 @@ validTags = [ "address" , "article" , "body" , "footer" , "header" , "h1" , "h2"
             , "details" , "summary", "blockquote", "embed", "iframe"]
 
 validAttrs :: [Attr]
-validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" , "target" , "width" , "height" , "min" , "max", "pluginspage"]
+validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" 
+             , "target" , "width" , "height" , "min" , "max", "pluginspage"]
 
 isValidTag :: Tag -> Bool
 isValidTag = (`elem` validTags)
@@ -88,5 +90,3 @@ htmlStringToVirtualDom s = fmap go htmlAST
                                                      then VirtualDom.attribute (JSS.pack key) (JSS.pack val)
                                                      else VirtualDom.attribute ("invalid-attr:" <> JSS.pack key) ""
 
-
---------------------------------------------------------------------------------    

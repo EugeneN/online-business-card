@@ -53,11 +53,11 @@ siteComponent c = do
 
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
-      [] -> viewU $ GistError $ DatasourceError emptyMenu "There are no files in this forest"
+      []    -> viewU $ GistError $ DatasourceError emptyMenu "There are no files in this forest"
       (f:_) -> 
         let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
         in case forest of
-              Left err -> viewU $ GistError $ DatasourceError emptyMenu $ JSS.pack err
+              Left err      -> viewU $ GistError $ DatasourceError emptyMenu $ JSS.pack err
               Right forest' -> stateU forest'
 
   pure v
@@ -79,15 +79,15 @@ siteComponent c = do
           curTree  = listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f
           subLevel = case curTree of
                         Nothing -> MenuNil
-                        Just t -> extractMenu (DT.subForest t) ps (bc <> [path $ DT.rootLabel t])
+                        Just t  -> extractMenu (DT.subForest t) ps (bc <> [path $ DT.rootLabel t])
       in Menu curLevel subLevel
 
     findTreeByPath :: DT.Forest Page -> Path -> Maybe Page
     findTreeByPath f p = case (f, p) of
       ([],_)     -> Nothing
-      (x:_, []) -> Just $ DT.rootLabel x
+      (x:_, [])  -> Just $ DT.rootLabel x
       (xs, y:ys) -> case Prelude.filter ((y ==) . path . DT.rootLabel) xs of
-                      [] -> Nothing
+                      []  -> Nothing
                       x:_ -> case ys of
                                 []  -> Just $ DT.rootLabel x
                                 ys' -> findTreeByPath (DT.subForest x) ys'
@@ -96,9 +96,9 @@ siteComponent c = do
     loadGist_ viewU g f = void . forkIO $ do
       a <- loadGist g :: IO (Either DatasourceError ApiResult)
       case a of
-        Left x -> viewU $ GistError x
+        Left x   -> viewU $ GistError x
         Right a' -> case a' of
-                      Left  m -> viewU $ GistError $ DatasourceError emptyMenu (message m)
+                      Left  m   -> viewU $ GistError $ DatasourceError emptyMenu (message m)
                       Right a'' -> f a''
 
     view :: GistStatus -> Html
