@@ -16,15 +16,15 @@ import qualified Text.XML.Light.Input           as XMLI
 import qualified Text.XML.Light.Types           as XMLT
 
 import qualified Web.VirtualDom.Html            as H
-import qualified Web.VirtualDom.Html.Attributes as A        
-import qualified Web.VirtualDom.Html.Events     as E   
 import qualified Web.VirtualDom                 as VirtualDom
 
 import           Lubeck.App                     (Html)
 import           Lubeck.FRP   
 
-
+jss2text :: JSString -> T.Text
 jss2text = T.pack . JSS.unpack
+
+text2jss :: T.Text -> JSString 
 text2jss = JSS.pack . T.unpack
 
 newSignal :: a -> FRP (Sink a, Signal a)
@@ -34,6 +34,10 @@ newSignal z = do
   pure (u, s)
 
 --------------------------------------------------------------------------------
+type Tag = JSString
+type Attr = JSString
+
+validTags :: [Tag]
 validTags = [ "address" , "article" , "body" , "footer" , "header" , "h1" , "h2" , "h3"
             , "h4" , "h5" , "h6" , "nav" , "section" , "dd" , "div" , "dl" , "dt" , "figcaption"
             , "figure" , "hr" , "li" , "ol" , "p" , "pre" , "ul" , "a" , "abbr" , "b"
@@ -46,10 +50,15 @@ validTags = [ "address" , "article" , "body" , "footer" , "header" , "h1" , "h2"
             , "label" , "legend" , "meter" , "optgroup" , "option"
             , "details" , "summary", "blockquote", "embed", "iframe"]
 
+validAttrs :: [Attr]
 validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" , "target" , "width" , "height" , "min" , "max", "pluginspage"]
 
-isValidTag      x = x `elem` validTags
-isValidAttrName x = x `elem` validAttrs
+isValidTag :: Tag -> Bool
+isValidTag = (`elem` validTags)
+
+isValidAttrName :: Attr -> Bool
+isValidAttrName = (`elem` validAttrs)
+
 -- TODO validate attr content, to prevent dynamic, scripting content etc
 -- https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet
 -- to prevent things like these:
@@ -57,6 +66,7 @@ isValidAttrName x = x `elem` validAttrs
 -- { text-size: "expression(alert('XSS'))"; }   // only in IE
 
 -- TODO unicode-entities-encoded values
+isValidAttrVal :: JSString -> Bool
 isValidAttrVal x =
   let a = JSS.count "javascript" . JSS.toLower $ x
       b = JSS.count "expression" . JSS.toLower $ x

@@ -9,36 +9,18 @@
 module Types where
 
 import           GHCJS.Types(JSString)
-import           JavaScript.Web.XMLHttpRequest
 import qualified GHC.Generics as GHC
-import           Control.Concurrent             (forkIO)
-import           Control.Exception
-import           Control.Monad                  (void)
 import           Control.Monad.Except
 import           Data.Aeson
 import           Data.Aeson.Types
-import           Data.ByteString
 import           Data.Foldable                  (asum)
 import           Data.JSString.Text             (textFromJSString, textToJSString)
 import qualified Data.HashMap.Strict            as HM    
 import           Data.Monoid                    ((<>))
-import           Data.String                    (fromString)
-import qualified Data.Text                      as T  
 import           Data.Time                      (UTCTime)
-import qualified Data.Tree                      as DT
-import qualified Data.Tree.Zipper               as Z
-import           System.Random
 
-import qualified Web.VirtualDom.Html            as H
-import qualified Web.VirtualDom.Html.Attributes as A        
-import qualified Web.VirtualDom.Html.Events     as E  
-import qualified Data.ByteString.Char8          as BS
-
-import           Lubeck.App                     (Html)
-import           Lubeck.FRP                     
 import           Lubeck.Util                    (showJS)
 
-import           UICombinators
 import           Utils
 
 
@@ -76,14 +58,14 @@ instance FromJSON Mimetype where
 
 instance FromJSON GistId where
   parseJSON (String x) = pure . GistId . text2jss $ x
-  parseJSON x          = mzero
+  parseJSON _          = mzero
 
 instance ToJSON GistId where
     toJSON (GistId x) = toJSON x
 
 instance FromJSON Files where
   parseJSON (Object x) = Files <$> mapM parseJSON (HM.elems x)
-  parseJSON x          = mzero
+  parseJSON _          = mzero
 
 instance FromJSON File where
   parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = Prelude.drop $ Prelude.length ("f_" :: String)}
@@ -134,16 +116,22 @@ data API = API {
     baseURL :: JSString
   , headers :: [Header]
 }
-   
+
+gistApi :: API
 gistApi =   API "https://api.github.com/gists/" []
 
 data DatasourceError = DatasourceError Menu JSString | NotFound Menu Path | Waiting  Menu Path
 
-deriving instance Show DatasourceError
+-- deriving instance Show DatasourceError
 
-type Menu = [[MenuItem]]
+newtype MenuLevel = MenuLevel { unlevel :: [MenuItem] }
+  deriving (Show)
+data Menu = Menu MenuLevel Menu 
+          | MenuNil
+  deriving (Show)
 
-emptyMenu = []
+emptyMenu :: Menu
+emptyMenu = Menu (MenuLevel []) MenuNil
 
 data MenuItem = MISelected JSString Path | MIUnselected JSString Path deriving (Show)
 

@@ -152,6 +152,7 @@ iframe {
   text-decoration: none;
   font-weight: lighter;
   padding-bottom: 10px;
+  border-bottom: 2px solid white;
   /*text-transform: uppercase;*/
 }
 .nav a:hover, .sub-nav a:hover {
@@ -220,7 +221,7 @@ blockquote {
 
 .current-menu-item {
   /* text-decoration: underline !important; */
-  border-bottom: 2px solid black;
+  border-bottom: 2px solid black !important;
 }
 .mode-menu {
   font-size: 10pt;

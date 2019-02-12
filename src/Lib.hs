@@ -9,27 +9,20 @@ module Lib
 import           GHCJS.Types                    (JSString, JSVal)
 import           GHCJS.Foreign.Callback
 import           Data.Aeson
-import           Data.Aeson.Types
-import           Data.ByteString
 import qualified Data.ByteString.Char8          as BS
 import qualified Data.JSString                  as JSS      
 import           Data.Maybe                     (listToMaybe)
 import           Data.Monoid                    ((<>))
-import           Data.String                    (fromString)
 import qualified Data.Tree                      as DT
-import qualified Data.Tree.Zipper               as Z
-import qualified Data.Text                      as T  
 import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void, join)
 import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom.Html.Attributes as A        
-import qualified Web.VirtualDom.Html.Events     as E  
 
 import           Lubeck.App                     (Html)
 import           Lubeck.FRP                     
 import           Lubeck.Util                    (showJS)
 import           Lubeck.Web.URI                 (decodeURIComponent)
-import           UICombinators
 
 import           Net
 import           Types
@@ -44,16 +37,17 @@ siteComponent c = do
   (viewU, viewModel)   <- newSignal GistPending
   (stateU, stateModel) <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
 
-  let stateModel' = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
+  let model = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
 
-  subscribeEvent (updates stateModel') $ \(f, p) -> 
+  void $ subscribeEvent (updates model) $ \(f, p) -> do
     let menu = extractMenu f p []
-    in case findTreeByPath f p of
+    print menu
+    case findTreeByPath f p of
           Nothing -> case (f, p) of
             ([], [])           -> viewU . GistError $ DatasourceError menu "Entering the forest"
             (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady menu 
-            ([], p)            -> viewU . GistError . Waiting menu $ p
-            (f,  p)            -> viewU . GistError . NotFound menu $ p
+            ([], p')            -> viewU . GistError . Waiting menu $ p'
+            (_,  p')            -> viewU . GistError . NotFound menu $ p'
           Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu  
 
   let v = fmap view viewModel
@@ -61,7 +55,7 @@ siteComponent c = do
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
       [] -> viewU $ GistError $ DatasourceError emptyMenu "There are no files in this forest"
-      (f:fs) -> 
+      (f:_) -> 
         let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
         in case forest of
               Left err -> viewU $ GistError $ DatasourceError emptyMenu $ JSS.pack err
@@ -70,25 +64,32 @@ siteComponent c = do
   pure v
 
   where 
+    treeToMenuItem :: Path -> DT.Tree Page -> MenuItem
+    treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p])
+    
+    pageToMenuItem :: Url -> Path -> Page -> MenuItem
+    pageToMenuItem p0 bc p = 
+      if path p == p0 
+        then MISelected   (title p) (bc <> [path p]) 
+        else MIUnselected (title p) (bc <> [path p])
+    
     extractMenu :: DT.Forest Page -> Path -> Path -> Menu
-    extractMenu f [] bc = [fmap (\x -> let p = DT.rootLabel x in MIUnselected (title p) (bc <> [path p])) f]
+    extractMenu f []      bc = Menu (MenuLevel $ fmap (treeToMenuItem bc) f) MenuNil
     extractMenu f (p0:ps) bc = 
-      let topMenu  = fmap DT.rootLabel f
-          topMenu' = fmap (\p -> if path p == p0 then MISelected   (title p) (bc <> [path p]) 
-                                                 else MIUnselected (title p) (bc <> [path p])) topMenu
+      let curLevel = MenuLevel . fmap (pageToMenuItem p0 bc) . fmap DT.rootLabel $ f
           curTree  = listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f
-          subMenu  = case curTree of
-                        Nothing -> []
+          subLevel = case curTree of
+                        Nothing -> MenuNil
                         Just t -> extractMenu (DT.subForest t) ps (bc <> [path $ DT.rootLabel t])
-      in [topMenu', join subMenu]
+      in Menu curLevel subLevel
 
     findTreeByPath :: DT.Forest Page -> Path -> Maybe Page
     findTreeByPath f p = case (f, p) of
       ([],_)     -> Nothing
-      (x:xs, []) -> Just $ DT.rootLabel x
+      (x:_, []) -> Just $ DT.rootLabel x
       (xs, y:ys) -> case Prelude.filter ((y ==) . path . DT.rootLabel) xs of
                       [] -> Nothing
-                      x:xs -> case ys of
+                      x:_ -> case ys of
                                 []  -> Just $ DT.rootLabel x
                                 ys' -> findTreeByPath (DT.subForest x) ys'
 
@@ -101,6 +102,7 @@ siteComponent c = do
                       Left  m -> viewU $ GistError $ DatasourceError emptyMenu (message m)
                       Right a'' -> f a''
 
+    view :: GistStatus -> Html
     view GistPending = H.div [A.class_ "loader-container"] 
                              [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
                              , H.text "Loading" ]
@@ -128,25 +130,31 @@ siteComponent c = do
       
     view (GistReady m a) = 
       wrapper m (gistH $ unfiles $ files a)
-      
+    
+    wrapper :: Menu -> Html -> Html
     wrapper m b = 
       H.div [A.class_ "content"]
             [H.div [A.class_ "section"]
                    [ renderMenu m, b ]]
 
     renderMenu :: Menu -> Html
-    renderMenu [] = H.div [A.class_ "nav"] []
-    renderMenu xs = H.div [A.class_ "nav"] (go 0 xs)
+    renderMenu m = H.div [A.class_ "nav"] (renderSubMenu 0 m)
 
-    go lvl []     = []
-    go lvl (m:sm) = 
-      [H.div [A.class_ $ "menu-level-" <> showJS lvl] 
-             (fmap menuItem m)
-      ] <> (go (lvl+1) sm)
+    renderSubMenu :: Int -> Menu -> [Html]
+    renderSubMenu _ MenuNil                       = []
+    renderSubMenu _ (Menu (MenuLevel []) _)       = []
+    renderSubMenu l (Menu (MenuLevel xs) MenuNil) = renderMenuLevel l xs
+    renderSubMenu l (Menu (MenuLevel xs) sm)      = renderMenuLevel l xs <> renderSubMenu (l+1) sm
 
-    menuItem (MISelected x ps)   = H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
-    menuItem (MIUnselected x ps) = H.a [A.href (renderPath ps)] [ H.text x ]
+    renderMenuLevel :: Int -> [MenuItem] -> [Html]
+    renderMenuLevel _   [] = []
+    renderMenuLevel lvl m  = [H.div [A.class_ $ "menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
 
+    renderMenuItem :: MenuItem -> Html
+    renderMenuItem (MISelected x ps)   = H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MIUnselected x ps) = H.a [A.href (renderPath ps)] [ H.text x ]
+
+    renderPath :: Path -> JSString
     renderPath ps = "#" <> JSS.intercalate "/" ps
 
     gistH :: [File] -> Html
@@ -159,14 +167,9 @@ siteComponent c = do
 --------------------------------------------------------------------------------
 
 
-newtype WindowHistory = WindowHistory JSVal
-
 navComp :: IO (Signal Path)
 navComp = do
   (u, s) <- newSignal [] :: FRP (Sink Path, Signal Path)
-
-  -- onPopstate =<< mkCallback (handleState u)
-  -- void . forkIO $ getStateFromUrl >>= handleState u
 
   onUrlHashChange =<< mkCallback (handleLocHash u)
   void . forkIO $ getUrlHash >>=  handleLocHash' u
@@ -174,31 +177,11 @@ navComp = do
   pure s
 
   where
-    -- handleState   u = u . fmap decodeURIComponent . unpackWindowHistory . toWH
     handleLocHash u  = u . fmap decodeURIComponent . splitLocationHash . extractNewHash
     handleLocHash' u = u . fmap decodeURIComponent . splitLocationHash 
 
-
-
-foreign import javascript unsafe "var f = $1; window.onpopstate = function(e) { f(e.state) };"
-  onPopstate :: Callback (JSVal -> IO ()) -> IO ()    
-  
-unpackWindowHistory :: WindowHistory -> [JSString]
-unpackWindowHistory wh = xs
-  where
-    xs  = fmap (getWHChunk wh) [0..pred len]
-    len = whLength wh
-
 mkCallback :: (JSVal -> IO ()) -> IO (Callback (JSVal -> IO ()))
 mkCallback f = syncCallback1 ThrowWouldBlock f
-
-foreign import javascript unsafe "$1.xs.length" whLength :: WindowHistory -> Int
-foreign import javascript unsafe "$1.xs[$2]" getWHChunk :: WindowHistory -> Int -> JSString
-foreign import javascript unsafe "(function(z){ return z; }($1))" toWH :: JSVal -> WindowHistory
-
--- always leading /
-foreign import javascript unsafe "(function(){ var p=location.pathname; var q=p.split('/'); var r={pushStated: true, xs: q.slice(1, q.length)}; return r; }())"
-  getStateFromUrl :: IO JSVal
 
 foreign import javascript unsafe "var x = $1; window.addEventListener('hashchange', x, false);"
   onUrlHashChange :: Callback (JSVal -> IO ()) -> IO ()
