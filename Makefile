@@ -15,6 +15,7 @@ servedist: dist
 
 copyres:
 	cp -R ./res/  $(distdir)
+	cp -R ./extra/  $(distdir)
 
 build:
 	stack build
