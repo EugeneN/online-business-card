@@ -33,7 +33,7 @@ import           UICombinators
 
 data GistStatus = GistPending | GistError DatasourceError | GistReady Menu Gist 
 
-data RenderMode = RView | REditMenu | REditContent
+data RenderMode = RView | REditMenu | REditContent deriving (Show)
 
 data EditCmd = DontSubmit GistId JSString | Submit GistId JSString deriving (Show)
 
@@ -59,11 +59,12 @@ siteComponent c = do
         rmodeU RView
         editU Nothing
 
-  subscribeEvent kbdEv $ \(Key x) -> 
-    case x of
-      69 -> rmodeU REditContent -- 'e'
-      27 -> rmodeU RView -- 'e'
-      x  -> print x
+  subscribeEvent kbdEv $ \(Key x) -> do
+    curMode <- pollBehavior $ current rmodeS
+    case (x, curMode) of
+      (69, RView)        -> rmodeU REditContent -- 'e'
+      (27, REditContent) -> rmodeU RView -- 'e'
+      x                  -> print x
 
   let model       = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
   let renderModel = (,,) <$> viewModel <*> rmodeS <*> editS :: Signal (GistStatus, RenderMode, Maybe (EditCmd))                                                 
