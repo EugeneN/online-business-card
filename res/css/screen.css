@@ -233,21 +233,22 @@ blockquote {
   color: black;
   text-decoration: underline;
 }
-code {
+pre > code {
   display: block;
-  white-space: pre;
+  font-style: normal;
 }
-.code {
-  font-family: "Courier New", sans-serif;
-  background-color: rgba(0,0,0,0.04);
+code, .code {
+  display: inline;
+  white-space: pre;
   padding: 10px;
-  font-size: 80%;
   overflow: auto;
+  font-style: italic;
+  padding: 0;
 }
 .inline-code {
   display: inline-block;
-  font-family: "Courier New", sans-serif;
-  background-color: rgba(0,0,0,0.04);
+  /* font-family: "Courier New", sans-serif; */
+  /* background-color: rgba(0,0,0,0.04); */
   padding-left: .5em;
   padding-right: .5em;
 }
@@ -270,6 +271,11 @@ ul.articles-list li {
 h6 img {
   width: 16px;
   margin: 2px;
+}
+
+figcaption {
+  font-style: italic;
+  font-size: 80%;
 }
 
 img.full-width {
