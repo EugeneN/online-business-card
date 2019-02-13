@@ -1,13 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE JavaScriptFFI     #-}
 
-module Utils 
- ( htmlStringToVirtualDom
- , jss2text
- , text2jss
- , newSignal
- ) where
+module Utils where
 
-import           Data.JSString                  (JSString)
+import           GHCJS.Types                    (JSString, JSVal)
+import           GHCJS.Foreign.Callback
 import qualified Data.JSString                  as JSS  
 import           Data.Monoid ((<>))
 import qualified Data.Text                      as T
@@ -17,9 +14,12 @@ import qualified Text.XML.Light.Types           as XMLT
 
 import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom                 as VirtualDom
+import qualified Web.VirtualDom.Html.Events     as E
 
 import           Lubeck.App                     (Html)
-import           Lubeck.FRP   
+import           Lubeck.FRP 
+
+import           Types
 
 
 jss2text :: JSString -> T.Text
@@ -90,3 +90,28 @@ htmlStringToVirtualDom s = fmap go htmlAST
                                                      then VirtualDom.attribute (JSS.pack key) (JSS.pack val)
                                                      else VirtualDom.attribute ("invalid-attr:" <> JSS.pack key) ""
 
+--------------------------------------------------------------------------------
+foreign import javascript unsafe "document.addEventListener('keyup', $1);"
+  js_JSFunListener :: (Callback (JSVal -> IO ())) -> IO ()
+
+jsFunListener :: (Callback (JSVal -> IO ())) -> IO ()
+jsFunListener cb = js_JSFunListener cb
+
+foreign import javascript unsafe "(function() { /* console.log($1); */ return $1; })()"
+  toEvent' :: JSVal -> E.Event
+
+toEvent e = 
+  let e' = toEvent' e
+  in Key (getKeycode e') (isAlt e') (isCtrl e') (isShift e') (isMeta e')
+
+
+foreign import javascript unsafe "(function() { return $1.which })()"    getKeycode :: E.Event -> Int
+foreign import javascript unsafe "(function() { return $1.altKey })()"   isAlt      :: E.Event -> Bool
+foreign import javascript unsafe "(function() { return $1.ctrlKey })()"  isCtrl     :: E.Event -> Bool
+foreign import javascript unsafe "(function() { return $1.shiftKey })()" isShift    :: E.Event -> Bool
+foreign import javascript unsafe "(function() { return $1.metaKey })()"  isMeta     :: E.Event -> Bool
+
+kbdListener :: (JSVal -> IO()) -> IO ()
+kbdListener handler = do
+    callback <- asyncCallback1 handler -- synchronously?
+    jsFunListener  callback

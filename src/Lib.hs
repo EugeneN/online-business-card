@@ -29,6 +29,8 @@ import           Net
 import           Types
 import           Utils
 import           UICombinators
+import           Component.Title                (titleComponent)
+import           Component.Nav                  (navComponent)
 
 
 data GistStatus = GistPending | GistError DatasourceError | GistReady Menu Gist 
@@ -37,9 +39,9 @@ data RenderMode = RView | REditMenu | REditContent deriving (Show)
 
 data EditCmd = DontSubmit GistId JSString | Submit GistId JSString deriving (Show)
 
-siteComponent :: SiteConfig -> FRP (Signal Html, Maybe (Sink KbdEvents))
+siteComponent :: SiteConfig -> FRP (Signal Html, Sink Key)
 siteComponent c = do
-  navS                 <- navComp 
+  navS                 <- navComponent 
   tU                   <- titleComponent
   (viewU, viewModel)   <- newSignal GistPending
   (stateU, stateModel) <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
@@ -59,11 +61,11 @@ siteComponent c = do
         rmodeU RView
         editU Nothing
 
-  subscribeEvent kbdEv $ \(Key x) -> do
+  subscribeEvent kbdEv $ \x -> do
     curMode <- pollBehavior $ current rmodeS
-    case (x, curMode) of
-      (69, RView)        -> rmodeU REditContent -- 'e'
-      (27, REditContent) -> rmodeU RView -- 'e'
+    case (keycode x, alt x, curMode) of
+      (69, True, RView)        -> rmodeU REditContent -- 'e'
+      (27, True, REditContent) -> rmodeU RView -- 'e'
       x                  -> print x
 
   let model       = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
@@ -90,7 +92,7 @@ siteComponent c = do
               Left err      -> viewU $ GistError $ DatasourceError emptyMenu $ JSS.pack err
               Right forest' -> stateU forest'
 
-  pure (v, Just kbdU)
+  pure (v, kbdU)
 
   where 
     treeToMenuItem :: Path -> DT.Tree Page -> MenuItem
@@ -203,61 +205,3 @@ siteComponent c = do
       ]
     renderFileH _ _  _            _  _ f = htmlStringToVirtualDom $ f_content f
       
-
---------------------------------------------------------------------------------
-
-titleComponent :: FRP (Sink Menu)
-titleComponent = do
-  (u, s) <- newSignal emptyMenu
-  let s' = fmap (JSS.intercalate " ← " . reverse . ("EN" :) . fmap getTitle . flattenMenu) s
-
-  void $ subscribeEvent (updates s') setTitle
-
-  pure u
-
-  where
-    flattenMenu MenuNil          = []
-    flattenMenu (Menu m MenuNil) = findSelectedItem m
-    flattenMenu (Menu m sm)      = findSelectedItem m <> flattenMenu sm
-
-    findSelectedItem (MenuLevel xs) = Prelude.filter isSelected xs
-
-    isSelected (MISelected   _ _) = True
-    isSelected (MIUnselected _ _) = False
-    
-    getTitle (MISelected   x _) = x
-    getTitle (MIUnselected x _) = x
-
-foreign import javascript unsafe "document.title = $1"
-  setTitle :: JSString -> IO ()
-
---------------------------------------------------------------------------------
-
-
-navComp :: IO (Signal Path)
-navComp = do
-  (u, s) <- newSignal [] :: FRP (Sink Path, Signal Path)
-
-  onUrlHashChange =<< mkCallback (handleLocHash u)
-  void . forkIO $ getUrlHash >>= handleLocHash' u
-
-  pure s
-
-  where
-    handleLocHash u  = u . fmap decodeURIComponent . splitLocationHash . extractNewHash
-    handleLocHash' u = u . fmap decodeURIComponent . splitLocationHash 
-
-mkCallback :: (JSVal -> IO ()) -> IO (Callback (JSVal -> IO ()))
-mkCallback f = syncCallback1 ThrowWouldBlock f
-
-foreign import javascript unsafe "var x = $1; window.addEventListener('hashchange', x, false);"
-  onUrlHashChange :: Callback (JSVal -> IO ()) -> IO ()
-
-splitLocationHash :: JSString -> [JSString]
-splitLocationHash h = if JSS.length h < 1 then [] else Prelude.filter (/= "") . JSS.splitOn "/" $ h
-
-foreign import javascript unsafe "document.location.hash.replace('#', '')"
-  getUrlHash :: IO JSString
-
-foreign import javascript unsafe "(function(z){ return z.newURL.split('#')[1] || ''; }($1))"
-  extractNewHash :: JSVal -> JSString 

@@ -8,21 +8,30 @@
 
 module Types where
 
-import           GHCJS.Types(JSString)
-import qualified GHC.Generics as GHC
+import           GHCJS.Types                    (JSString)
+import qualified GHC.Generics                   as GHC
 import           Control.Monad.Except
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Foldable                  (asum)
+import qualified Data.JSString                  as JSS  
 import           Data.JSString.Text             (textFromJSString, textToJSString)
 import qualified Data.HashMap.Strict            as HM    
 import           Data.Monoid                    ((<>))
+import qualified Data.Text                      as T
 import           Data.Time                      (UTCTime)
 
 import           Lubeck.Util                    (showJS)
 
-import           Utils
 
+data Key =
+  Key
+    { keycode :: Int
+    , alt     :: Bool
+    , control :: Bool
+    , shift   :: Bool
+    , command :: Bool
+    } deriving (Show)
 
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON
@@ -65,7 +74,7 @@ instance FromJSON Mimetype where
   parseJSON x                     = pure $ UnknownMimetype $ showJS x
 
 instance FromJSON GistId where
-  parseJSON (String x) = pure . GistId . text2jss $ x
+  parseJSON (String x) = pure . GistId . JSS.pack . T.unpack $ x
   parseJSON _          = mzero
 
 instance ToJSON GistId where
