@@ -40,28 +40,32 @@ siteComponent c = do
   let v     = fmap view ((,) <$> viewModel <*> model)
   
   void $ titleComponent model
-
-  void $ subscribeEvent (updates model) $ \(f, p) -> 
-    case findTreeByPath f p of
-      Nothing -> case (f, p) of
-        ([], [])           -> viewU . GistError . DatasourceError $ "Entering the forest"
-        (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady
-        ([], p')           -> viewU . GistError . Waiting $ p'
-        (_,  p')           -> viewU . GistError . NotFound $ p'
-      Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady
-
-  loadGist_ viewU (rootGist c) $ \a -> 
-    case unfiles $ files a of
-      []    -> viewU $ GistError $ DatasourceError "There are no files in this forest"
-      (f:_) -> 
-        let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
-        in case forest of
-              Left err      -> viewU $ GistError $ DatasourceError $ JSS.pack err
-              Right forest' -> stateU forest'
+  void $ subscribeEvent (updates model) $ handleModel viewU
+  loadMenu stateU viewU
 
   pure v
 
   where 
+    handleModel :: Sink GistStatus -> (DT.Forest Page, Path) -> FRP ()
+    handleModel viewU (f, p) = 
+      case findTreeByPath f p of
+        Nothing -> case (f, p) of
+          ([], [])           -> viewU GistPending
+          (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady
+          ([], p')           -> viewU . GistError . Waiting $ p'
+          (_,  p')           -> viewU . GistError . NotFound $ p'
+        Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady
+
+    loadMenu :: Sink (DT.Forest Page) -> Sink GistStatus -> FRP ()
+    loadMenu stateU viewU = 
+      loadGist_ viewU (rootGist c) $ \a -> 
+        case unfiles $ files a of
+          []    -> viewU $ GistError $ DatasourceError "There are no files in this forest"
+          (f:_) -> let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
+                   in case forest of
+                          Left err      -> viewU $ GistError $ DatasourceError $ JSS.pack err
+                          Right forest' -> stateU forest'
+
     findTreeByPath :: DT.Forest Page -> Path -> Maybe Page
     findTreeByPath f p = case (f, p) of
       ([],_)     -> Nothing
