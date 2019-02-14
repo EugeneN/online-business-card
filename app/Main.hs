@@ -3,7 +3,7 @@
 module Main where
 
 import           Lubeck.App     (runAppReactive)
-import           Lib            (siteComponent)
+import           Component.Site (siteComponent)
 import           Types
 
 

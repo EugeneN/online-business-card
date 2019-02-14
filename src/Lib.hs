@@ -1,35 +1,43 @@
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE JavaScriptFFI              #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-module Lib
-    ( siteComponent
-    ) where
+module Lib 
+ ( htmlStringToVirtualDom
+ , jss2text
+ , text2jss
+ , newSignal
+ , extractMenu
+ ) where
 
-import           GHCJS.Types                    (JSString, JSVal)
-import           GHCJS.Foreign.Callback
-import           Data.Aeson
-import qualified Data.ByteString.Char8          as BS
-import qualified Data.JSString                  as JSS      
+import           Data.JSString                  (JSString)
+import qualified Data.JSString                  as JSS  
 import           Data.Maybe                     (listToMaybe)
-import           Data.Monoid                    ((<>))
+import           Data.Monoid ((<>))
+import qualified Data.Text                      as T
 import qualified Data.Tree                      as DT
-import           Control.Concurrent             (forkIO)
-import           Control.Monad                  (void, join)
+
+import qualified Text.XML.Light.Input           as XMLI
+import qualified Text.XML.Light.Types           as XMLT
+
 import qualified Web.VirtualDom.Html            as H
-import qualified Web.VirtualDom.Html.Attributes as A        
+import qualified Web.VirtualDom                 as VirtualDom
 
 import           Lubeck.App                     (Html)
-import           Lubeck.FRP                     
-import           Lubeck.Util                    (showJS)
-import           Lubeck.Web.URI                 (decodeURIComponent)
+import           Lubeck.FRP   
 
-import           Net
 import           Types
-import           Utils
 
 
-data GistStatus = GistPending | GistError DatasourceError | GistReady Gist 
+jss2text :: JSString -> T.Text
+jss2text = T.pack . JSS.unpack
+
+text2jss :: T.Text -> JSString 
+text2jss = JSS.pack . T.unpack
+
+newSignal :: a -> FRP (Sink a, Signal a)
+newSignal z = do
+  (u, e) <- newEvent
+  s <- stepperS z e
+  pure (u, s)
 
 extractMenu :: DT.Forest Page -> Path -> Path -> Menu
 extractMenu f []      bc = Menu (MenuLevel $ fmap (treeToMenuItem bc) f) MenuNil
@@ -50,175 +58,59 @@ pageToMenuItem p0 bc p =
     then MISelected   (title p) (bc <> [path p]) 
     else MIUnselected (title p) (bc <> [path p])
 
---------------------------------------------------------------------------------    
-
-siteComponent :: SiteConfig -> FRP (Signal Html)
-siteComponent c = do
-  navS <- navComp 
-  (viewU, viewModel)   <- newSignal GistPending
-  (stateU, stateModel) <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
-
-  let model = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
-  let v     = fmap view ((,) <$> viewModel <*> model)
-  
-  void $ titleComponent model
-
-  void $ subscribeEvent (updates model) $ \(f, p) -> 
-    case findTreeByPath f p of
-      Nothing -> case (f, p) of
-        ([], [])           -> viewU . GistError . DatasourceError $ "Entering the forest"
-        (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady
-        ([], p')           -> viewU . GistError . Waiting $ p'
-        (_,  p')           -> viewU . GistError . NotFound $ p'
-      Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady
-
-  loadGist_ viewU (rootGist c) $ \a -> 
-    case unfiles $ files a of
-      []    -> viewU $ GistError $ DatasourceError "There are no files in this forest"
-      (f:_) -> 
-        let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
-        in case forest of
-              Left err      -> viewU $ GistError $ DatasourceError $ JSS.pack err
-              Right forest' -> stateU forest'
-
-  pure v
-
-  where 
-    findTreeByPath :: DT.Forest Page -> Path -> Maybe Page
-    findTreeByPath f p = case (f, p) of
-      ([],_)     -> Nothing
-      (x:_, [])  -> Just $ DT.rootLabel x
-      (xs, y:ys) -> case Prelude.filter ((y ==) . path . DT.rootLabel) xs of
-                      []  -> Nothing
-                      x:_ -> case ys of
-                                []  -> Just $ DT.rootLabel x
-                                ys' -> findTreeByPath (DT.subForest x) ys'
-
-    loadGist_ :: Sink GistStatus -> GistId -> (Gist -> IO ()) -> IO ()
-    loadGist_ viewU g f = void . forkIO $ do
-      a <- loadGist g :: IO (Either DatasourceError ApiResult)
-      case a of
-        Left x   -> viewU $ GistError x
-        Right a' -> case a' of
-                      Left  m   -> viewU $ GistError $ DatasourceError (message m)
-                      Right a'' -> f a''
-
-    view :: (GistStatus, (DT.Forest Page, Path)) -> Html
-    view (GistPending, m) = 
-      wrapper m $ H.div [A.class_ "loader-container"] 
-                        [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
-                        , H.text "Loading" ]
-
-    view (GistError (DatasourceError s), m) = 
-      wrapper m $ H.div [A.class_ "s500"] 
-                        [ -- H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
-                          H.span [A.class_ "error-message"] [H.text s ]
-                        -- , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
-                        ]
-                   
-    view (GistError (Waiting ps), m) = 
-      wrapper m $ H.div [A.class_ "s404"] 
-                        [ H.text "Waiting for the forest to grow up at the path "
-                        , H.span [A.class_ "path"] [H.text $ renderPath ps ]
-                        , H.text "."
-                        ]
-                   
-    view (GistError (NotFound ps), m) = 
-      wrapper m $ H.div [A.class_ "s404"] 
-                    [ H.text "The path "
-                    , H.span [A.class_ "path"] [H.text $ renderPath ps ]
-                    , H.text " was not found in this forest."
-                    ]
-      
-    view (GistReady a, m) = 
-      wrapper m (gistH $ unfiles $ files a)
-    
-    wrapper :: (DT.Forest Page, Path) -> Html -> Html
-    wrapper (f, p) b = 
-      let menu = extractMenu f p []
-      in H.div [A.class_ "content"]
-            [H.div [A.class_ "section"]
-                   [ renderMenu menu, b ]]
-
-    renderMenu :: Menu -> Html
-    renderMenu m = H.div [A.class_ "nav"] (renderSubMenu 0 m)
-
-    renderSubMenu :: Int -> Menu -> [Html]
-    renderSubMenu _ MenuNil                       = []
-    renderSubMenu _ (Menu (MenuLevel []) _)       = []
-    renderSubMenu l (Menu (MenuLevel xs) MenuNil) = renderMenuLevel l xs
-    renderSubMenu l (Menu (MenuLevel xs) sm)      = renderMenuLevel l xs <> renderSubMenu (l+1) sm
-
-    renderMenuLevel :: Int -> [MenuItem] -> [Html]
-    renderMenuLevel _   [] = []
-    renderMenuLevel lvl m  = [H.div [A.class_ $ "menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
-
-    renderMenuItem :: MenuItem -> Html
-    renderMenuItem (MISelected x ps)   = H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
-    renderMenuItem (MIUnselected x ps) = H.a [A.href (renderPath ps)] [ H.text x ]
-
-    renderPath :: Path -> JSString
-    renderPath ps = "#" <> JSS.intercalate "/" ps
-
-    gistH :: [File] -> Html
-    gistH as = H.div [] (join $ fmap renderFileH as)
-              
-    renderFileH :: File -> [Html]
-    renderFileH f = htmlStringToVirtualDom $ f_content f
-      
-
 --------------------------------------------------------------------------------
+type Tag = JSString
+type Attr = JSString
 
-titleComponent :: Signal (DT.Forest Page, Path) -> FRP ()
-titleComponent s = do
-  let s' = fmap (JSS.intercalate " ← " . reverse . ("EN" :) . fmap getTitle . flattenMenu . extractMenu') s
-  void $ subscribeEvent (updates s') setTitle
+validTags :: [Tag]
+validTags = [ "address" , "article" , "body" , "footer" , "header" , "h1" , "h2" , "h3"
+            , "h4" , "h5" , "h6" , "nav" , "section" , "dd" , "div" , "dl" , "dt" , "figcaption"
+            , "figure" , "hr" , "li" , "ol" , "p" , "pre" , "ul" , "a" , "abbr" , "b"
+            , "br" , "cite" , "code" , "dfn" , "em" , "i" , "kbd" , "mark" , "q" , "rp"
+            , "rt" , "s" , "samp" , "small" , "span" , "strong" , "sub" , "sup"
+            , "time" , "u" , "var" , "wbr" , "img" , "video"
+            , "source" , "del" , "ins" , "caption"
+            , "col" , "colgroup" , "table" , "tbody" , "td" , "tfoot" , "th" , "thead"
+            , "tr" , "datalist" , "fieldset"
+            , "label" , "legend" , "meter" , "optgroup" , "option"
+            , "details" , "summary", "blockquote", "embed", "iframe"]
 
+validAttrs :: [Attr]
+validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" 
+             , "target" , "width" , "height" , "min" , "max", "pluginspage"]
+
+isValidTag :: Tag -> Bool
+isValidTag = (`elem` validTags)
+
+isValidAttrName :: Attr -> Bool
+isValidAttrName = (`elem` validAttrs)
+
+-- TODO validate attr content, to prevent dynamic, scripting content etc
+-- https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet
+-- to prevent things like these:
+-- { background-url : "javascript:alert(1)"; }  // and all other URLs
+-- { text-size: "expression(alert('XSS'))"; }   // only in IE
+
+-- TODO unicode-entities-encoded values
+isValidAttrVal :: JSString -> Bool
+isValidAttrVal x =
+  let a = JSS.count "javascript" . JSS.toLower $ x
+      b = JSS.count "expression" . JSS.toLower $ x
+      c = JSS.count "file" . JSS.toLower $ x
+  in a + b + c == 0
+
+htmlStringToVirtualDom :: JSString -> [Html]
+htmlStringToVirtualDom s = fmap go htmlAST
   where
-    extractMenu' (f, p) = extractMenu f p []
+    htmlAST = XMLI.parseXML $ JSS.unpack s
 
-    flattenMenu MenuNil          = []
-    flattenMenu (Menu m MenuNil) = findSelectedItem m
-    flattenMenu (Menu m sm)      = findSelectedItem m <> flattenMenu sm
+    go (XMLT.Text (XMLT.CData _ x _))                                   = H.text $ JSS.pack x
+    go (XMLT.Elem (XMLT.Element (XMLT.QName tag _ _) attrs children _)) = if isValidTag (JSS.pack tag)
+                                                                            then VirtualDom.node (JSS.pack tag) (fmap goAttrs attrs) (fmap go children)
+                                                                            else H.text $ "<Invalid tag: " <> JSS.pack tag <> ">"
+    go (XMLT.CRef _)                                                    = H.text " " -- $ JSS.pack x
 
-    findSelectedItem (MenuLevel xs) = Prelude.filter isSelected xs
+    goAttrs (XMLT.Attr (XMLT.QName key _ _) val) = if isValidAttrName (JSS.pack key) && isValidAttrVal (JSS.pack val)
+                                                     then VirtualDom.attribute (JSS.pack key) (JSS.pack val)
+                                                     else VirtualDom.attribute ("invalid-attr:" <> JSS.pack key) ""
 
-    isSelected (MISelected   _ _) = True
-    isSelected (MIUnselected _ _) = False
-    
-    getTitle (MISelected   x _) = x
-    getTitle (MIUnselected x _) = x
-
-foreign import javascript unsafe "document.title = $1"
-  setTitle :: JSString -> IO ()
-
---------------------------------------------------------------------------------
-
-
-navComp :: IO (Signal Path)
-navComp = do
-  (u, s) <- newSignal [] :: FRP (Sink Path, Signal Path)
-
-  onUrlHashChange =<< mkCallback (handleLocHash u)
-  void . forkIO $ getUrlHash >>= handleLocHash' u
-
-  pure s
-
-  where
-    handleLocHash u  = u . fmap decodeURIComponent . splitLocationHash . extractNewHash
-    handleLocHash' u = u . fmap decodeURIComponent . splitLocationHash 
-
-mkCallback :: (JSVal -> IO ()) -> IO (Callback (JSVal -> IO ()))
-mkCallback f = syncCallback1 ThrowWouldBlock f
-
-foreign import javascript unsafe "var x = $1; window.addEventListener('hashchange', x, false);"
-  onUrlHashChange :: Callback (JSVal -> IO ()) -> IO ()
-
-splitLocationHash :: JSString -> [JSString]
-splitLocationHash h = if JSS.length h < 1 then [] else Prelude.filter (/= "") . JSS.splitOn "/" $ h
-
-foreign import javascript unsafe "document.location.hash.replace('#', '')"
-  getUrlHash :: IO JSString
-
-foreign import javascript unsafe "(function(z){ return z.newURL.split('#')[1] || ''; }($1))"
-  extractNewHash :: JSVal -> JSString 
