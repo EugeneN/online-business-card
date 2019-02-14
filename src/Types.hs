@@ -84,8 +84,15 @@ instance FromJSON Files where
   parseJSON (Object x) = Files <$> mapM parseJSON (HM.elems x)
   parseJSON _          = mzero
 
+instance ToJSON Files where
+  toJSON f:fs = Object.fromList (filename, toJSON f)
+  toJSON _          = mzero
+
 instance FromJSON File where
   parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = Prelude.drop $ Prelude.length ("f_" :: String)}
+
+  instance ToJSON File where
+    toJSON = genericToJSON defaultOptions {... Prelude.drop $ Prelude.length ("f_" :: String)}
 
 newtype Files = 
   Files 
@@ -112,7 +119,7 @@ data Gist =
     , id          :: GistId
     , description :: JSString
     , files       :: Files 
-    } deriving (GHC.Generic, FromJSON, Show)
+    } deriving (GHC.Generic, FromJSON, ToJSON, Show)
 
 type ApiResult = Either Message Gist
 

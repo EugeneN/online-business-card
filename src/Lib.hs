@@ -49,18 +49,6 @@ siteComponent c = do
   (editU, editS)       <- newSignal Nothing -- Maybe EditCmd
   (kbdU,  kbdEv)       <- newEvent
 
-  subscribeEvent (updates editS) $ \cmd -> 
-    case cmd of
-      Nothing -> print "Nothing in editor buffer"
-      Just (DontSubmit i b) -> print cmd
-      Just (Submit g b) -> do
-        print b
-        print g
-        print "save gist"
-        print "load gist"
-        rmodeU RView
-        editU Nothing
-
   subscribeEvent kbdEv $ \x -> do
     curMode <- pollBehavior $ current rmodeS
     case (keycode x, alt x, curMode) of
@@ -82,6 +70,26 @@ siteComponent c = do
         ([], p')           -> viewU . GistError . Waiting menu $ p'
         (_,  p')           -> viewU . GistError . NotFound menu $ p'
       Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady menu
+
+  subscribeEvent (updates editS) $ \cmd -> 
+    case cmd of
+      Nothing -> print "Nothing in editor buffer"
+      Just (DontSubmit i b) -> print cmd
+      Just (Submit g b) -> do
+        print b
+        print g
+        rmodeU RView
+        editU Nothing
+        void . forkIO $ do
+          r <- updateGist $ Gist Nothing Nothing g "haskell edited" [File b "zzz.html" "html" 0 Plaintext]
+          case r of
+            Left x   -> print x
+            Right a' -> case a' of
+                          Left  m   -> print m
+                          Right a'' -> do
+                            m <- pollBehavior $ current model
+                            let menu = extractMenu f p []
+                            loadGist_ viewU g $ viewU . GistReady menu
 
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
