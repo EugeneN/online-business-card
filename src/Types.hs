@@ -134,7 +134,6 @@ gistApi = API "https://api.github.com/gists/" []
 data DatasourceError = 
     DatasourceError JSString 
   | NotFound Path 
-  | Waiting Path
 
 -- deriving instance Show DatasourceError
 

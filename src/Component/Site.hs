@@ -10,6 +10,7 @@ import           GHCJS.Types                    (JSString)
 import           Data.Aeson
 import qualified Data.ByteString.Char8          as BS
 import qualified Data.JSString                  as JSS      
+import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid                    ((<>))
 import qualified Data.Tree                      as DT
 import           Control.Concurrent             (forkIO)
@@ -28,12 +29,12 @@ import           Net
 import           Types
 
 
-data GistStatus = GistPending | GistError DatasourceError | GistReady Gist 
+data GistStatus = GistPending (Maybe Path) | GistError DatasourceError | GistReady Gist 
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
   navS                 <- navComponent 
-  (viewU, viewModel)   <- newSignal GistPending
+  (viewU, viewModel)   <- newSignal (GistPending Nothing)
   (stateU, stateModel) <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
 
   let model = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
@@ -50,9 +51,9 @@ siteComponent c = do
     handleModel viewU (f, p) = 
       case findTreeByPath f p of
         Nothing -> case (f, p) of
-          ([], [])           -> viewU GistPending
+          ([], [])           -> viewU (GistPending Nothing)
           (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady
-          ([], p')           -> viewU . GistError . Waiting $ p'
+          ([], p')           -> viewU . GistPending . Just $ p'
           (_,  p')           -> viewU . GistError . NotFound $ p'
         Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady
 
@@ -86,23 +87,17 @@ siteComponent c = do
                       Right a'' -> f a''
 
     view :: GistStatus -> (DT.Forest Page, Path) -> Html
-    view GistPending m = 
-      wrapper m $ H.div [A.class_ "loader-container"] 
-                        [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
-                        , H.text "Loading" ]
+    view (GistPending p) m = 
+      let ps = fromMaybe "" $ renderPath <$> p
+      in wrapper m $ H.div [A.class_ "loader-container"] 
+                           [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
+                           , H.text $ "Loading " <> ps ]
 
     view (GistError (DatasourceError s)) m = 
       wrapper m $ H.div [A.class_ "s500"] 
                         [ -- H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
                           H.span [A.class_ "error-message"] [H.text s ]
                         -- , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
-                        ]
-                   
-    view (GistError (Waiting ps)) m = 
-      wrapper m $ H.div [A.class_ "s404"] 
-                        [ H.text "Waiting for the forest to grow up at the path "
-                        , H.span [A.class_ "path"] [H.text $ renderPath ps ]
-                        , H.text "."
                         ]
                    
     view (GistError (NotFound ps)) m = 
