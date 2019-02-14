@@ -79,6 +79,7 @@ siteComponent c = do
 
     loadGist_ :: Sink GistStatus -> GistId -> (Gist -> IO ()) -> IO ()
     loadGist_ viewU g f = void . forkIO $ do
+      viewU $ GistPending Nothing
       a <- loadGist g :: IO (Either DatasourceError ApiResult)
       case a of
         Left x   -> viewU $ GistError x
@@ -90,8 +91,8 @@ siteComponent c = do
     view (GistPending p) m = 
       let ps = fromMaybe "" $ renderPath <$> p
       in wrapper m $ H.div [A.class_ "loader-container"] 
-                           [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
-                           , H.text $ "Loading " <> ps ]
+                           [ H.div [] [H.text $ "Loading " <> ps]
+                           , H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] [] ]
 
     view (GistError (DatasourceError s)) m = 
       wrapper m $ H.div [A.class_ "s500"] 

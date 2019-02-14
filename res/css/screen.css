@@ -518,6 +518,7 @@ ul.img-list {
   left: 20px;
   margin: 0;
   padding: 0;
+  font-style: italic;
 }
 
 .ajax-loader {
@@ -526,7 +527,25 @@ ul.img-list {
   margin: 0;
   padding: 0;
   margin-right: 5px;
+  position: absolute;
+  left: 0px;
+  animation: pacman 10s;
+  -moz-animation: pacman 10s;
+  -webkit-animation: pacman 10s;
 }
+
+@keyframes pacman
+  { from {left: 0;} 
+    to   {left: 800px;} 
+  }
+@-moz-keyframes pacman
+  { from {left: 0px;} 
+    to   {left: 800px;} 
+  }
+@-webkit-keyframes pacman
+  { from {left: 0px;} 
+    to   {left: 800px;} 
+  }
 
 .eugene {
   width: 200px;
