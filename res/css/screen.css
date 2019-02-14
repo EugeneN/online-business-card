@@ -529,9 +529,9 @@ ul.img-list {
   margin-right: 5px;
   position: absolute;
   left: 0px;
-  animation: pacman 10s;
-  -moz-animation: pacman 10s;
-  -webkit-animation: pacman 10s;
+  animation: pacman 10s infinite alternate;
+  -moz-animation: pacman 10s infinite alternate;
+  -webkit-animation: pacman 10s infinite alternate;
 }
 
 @keyframes pacman
