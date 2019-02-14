@@ -46,7 +46,7 @@ siteComponent c = do
     in case findTreeByPath f p of
           Nothing -> case (f, p) of
             ([], [])           -> tU menu >> (viewU . GistError $ DatasourceError menu "Entering the forest")
-            (_, "blog":bid:[]) -> tU menu >> (loadGist_ viewU (GistId bid) $ viewU . GistReady menu)
+            (_, "blog":bid:[]) -> tU menu >> (loadGist_ viewU (GistId bid) $ handleBlog viewU model)
             ([], p')           -> tU menu >> (viewU . GistError . Waiting menu $ p')
             (_,  p')           -> tU menu >> (viewU . GistError . NotFound menu $ p')
           Just page            -> tU menu >> (loadGist_ viewU (dataSource page) $ viewU . GistReady menu)
@@ -63,6 +63,12 @@ siteComponent c = do
   pure v
 
   where 
+    handleBlog :: Sink GistStatus -> Signal (DT.Forest Page, Path) -> Gist -> IO ()
+    handleBlog viewU model g = do
+      (f, p) <- pollBehavior $ current model
+      let menu = extractMenu f p []
+      viewU $ GistReady menu g
+
     treeToMenuItem :: Path -> DT.Tree Page -> MenuItem
     treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p])
     
