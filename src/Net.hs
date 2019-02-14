@@ -47,11 +47,11 @@ getAPI api pathSuffix = do
   requestURI   <- liftIO $ mkAPIpath api pathSuffix
   eitherResult <- liftIO (try $ xhrByteString (request requestURI) :: IO (Either XHRError (Response ByteString)))
   case eitherResult of
-    Left s       -> pure . Left . DatasourceError emptyMenu $ showJS s
+    Left s       -> pure . Left . DatasourceError . showJS $ s
     Right result -> case contents result of
-      Nothing          -> pure . Left $ DatasourceError emptyMenu "getAPI: No response"
+      Nothing          -> pure . Left $ DatasourceError "getAPI: No response"
       Just byteString  -> case Data.Aeson.eitherDecodeStrict' byteString of
-        Left err -> pure . Left . DatasourceError emptyMenu $ "getAPI: Parse error " <> showJS err <> " in " <> showJS byteString
+        Left err -> pure . Left . DatasourceError $ "getAPI: Parse error " <> showJS err <> " in " <> showJS byteString
         Right x  -> pure $ Right x
   where
     request requestURI = Request { reqMethod          = GET

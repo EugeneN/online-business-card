@@ -29,65 +29,61 @@ import           Types
 import           Utils
 
 
-data GistStatus = GistPending | GistError DatasourceError | GistReady Menu Gist 
+data GistStatus = GistPending | GistError DatasourceError | GistReady Gist 
+
+extractMenu :: DT.Forest Page -> Path -> Path -> Menu
+extractMenu f []      bc = Menu (MenuLevel $ fmap (treeToMenuItem bc) f) MenuNil
+extractMenu f (p0:ps) bc = 
+  let curLevel = MenuLevel . fmap (pageToMenuItem p0 bc) . fmap DT.rootLabel $ f
+      curTree  = listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f
+      subLevel = case curTree of
+                    Nothing -> MenuNil
+                    Just t  -> extractMenu (DT.subForest t) ps (bc <> [path $ DT.rootLabel t])
+  in Menu curLevel subLevel
+
+treeToMenuItem :: Path -> DT.Tree Page -> MenuItem
+treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p])
+
+pageToMenuItem :: Url -> Path -> Page -> MenuItem
+pageToMenuItem p0 bc p = 
+  if path p == p0 
+    then MISelected   (title p) (bc <> [path p]) 
+    else MIUnselected (title p) (bc <> [path p])
+
+--------------------------------------------------------------------------------    
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
   navS <- navComp 
-  tU   <- titleComponent
   (viewU, viewModel)   <- newSignal GistPending
   (stateU, stateModel) <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
 
   let model = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
-  let v     = fmap view viewModel
+  let v     = fmap view ((,) <$> viewModel <*> model)
   
+  void $ titleComponent model
+
   void $ subscribeEvent (updates model) $ \(f, p) -> 
-    let menu = extractMenu f p []
-    in case findTreeByPath f p of
-          Nothing -> case (f, p) of
-            ([], [])           -> tU menu >> (viewU . GistError $ DatasourceError menu "Entering the forest")
-            (_, "blog":bid:[]) -> tU menu >> (loadGist_ viewU (GistId bid) $ handleBlog viewU model)
-            ([], p')           -> tU menu >> (viewU . GistError . Waiting menu $ p')
-            (_,  p')           -> tU menu >> (viewU . GistError . NotFound menu $ p')
-          Just page            -> tU menu >> (loadGist_ viewU (dataSource page) $ viewU . GistReady menu)
+    case findTreeByPath f p of
+      Nothing -> case (f, p) of
+        ([], [])           -> viewU . GistError . DatasourceError $ "Entering the forest"
+        (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady
+        ([], p')           -> viewU . GistError . Waiting $ p'
+        (_,  p')           -> viewU . GistError . NotFound $ p'
+      Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady
 
   loadGist_ viewU (rootGist c) $ \a -> 
     case unfiles $ files a of
-      []    -> viewU $ GistError $ DatasourceError emptyMenu "There are no files in this forest"
+      []    -> viewU $ GistError $ DatasourceError "There are no files in this forest"
       (f:_) -> 
         let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
         in case forest of
-              Left err      -> viewU $ GistError $ DatasourceError emptyMenu $ JSS.pack err
+              Left err      -> viewU $ GistError $ DatasourceError $ JSS.pack err
               Right forest' -> stateU forest'
 
   pure v
 
   where 
-    handleBlog :: Sink GistStatus -> Signal (DT.Forest Page, Path) -> Gist -> IO ()
-    handleBlog viewU model g = do
-      (f, p) <- pollBehavior $ current model
-      let menu = extractMenu f p []
-      viewU $ GistReady menu g
-
-    treeToMenuItem :: Path -> DT.Tree Page -> MenuItem
-    treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p])
-    
-    pageToMenuItem :: Url -> Path -> Page -> MenuItem
-    pageToMenuItem p0 bc p = 
-      if path p == p0 
-        then MISelected   (title p) (bc <> [path p]) 
-        else MIUnselected (title p) (bc <> [path p])
-    
-    extractMenu :: DT.Forest Page -> Path -> Path -> Menu
-    extractMenu f []      bc = Menu (MenuLevel $ fmap (treeToMenuItem bc) f) MenuNil
-    extractMenu f (p0:ps) bc = 
-      let curLevel = MenuLevel . fmap (pageToMenuItem p0 bc) . fmap DT.rootLabel $ f
-          curTree  = listToMaybe $ Prelude.filter ((p0 ==) . path . DT.rootLabel) f
-          subLevel = case curTree of
-                        Nothing -> MenuNil
-                        Just t  -> extractMenu (DT.subForest t) ps (bc <> [path $ DT.rootLabel t])
-      in Menu curLevel subLevel
-
     findTreeByPath :: DT.Forest Page -> Path -> Maybe Page
     findTreeByPath f p = case (f, p) of
       ([],_)     -> Nothing
@@ -104,43 +100,45 @@ siteComponent c = do
       case a of
         Left x   -> viewU $ GistError x
         Right a' -> case a' of
-                      Left  m   -> viewU $ GistError $ DatasourceError emptyMenu (message m)
+                      Left  m   -> viewU $ GistError $ DatasourceError (message m)
                       Right a'' -> f a''
 
-    view :: GistStatus -> Html
-    view GistPending = H.div [A.class_ "loader-container"] 
-                             [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
-                             , H.text "Loading" ]
+    view :: (GistStatus, (DT.Forest Page, Path)) -> Html
+    view (GistPending, m) = 
+      wrapper m $ H.div [A.class_ "loader-container"] 
+                        [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
+                        , H.text "Loading" ]
 
-    view (GistError (DatasourceError m s)) = 
+    view (GistError (DatasourceError s), m) = 
       wrapper m $ H.div [A.class_ "s500"] 
                         [ -- H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
                           H.span [A.class_ "error-message"] [H.text s ]
                         -- , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
                         ]
                    
-    view (GistError (Waiting m ps)) = 
+    view (GistError (Waiting ps), m) = 
       wrapper m $ H.div [A.class_ "s404"] 
                         [ H.text "Waiting for the forest to grow up at the path "
                         , H.span [A.class_ "path"] [H.text $ renderPath ps ]
                         , H.text "."
                         ]
                    
-    view (GistError (NotFound m ps)) = 
+    view (GistError (NotFound ps), m) = 
       wrapper m $ H.div [A.class_ "s404"] 
                     [ H.text "The path "
                     , H.span [A.class_ "path"] [H.text $ renderPath ps ]
                     , H.text " was not found in this forest."
                     ]
       
-    view (GistReady m a) = 
+    view (GistReady a, m) = 
       wrapper m (gistH $ unfiles $ files a)
     
-    wrapper :: Menu -> Html -> Html
-    wrapper m b = 
-      H.div [A.class_ "content"]
+    wrapper :: (DT.Forest Page, Path) -> Html -> Html
+    wrapper (f, p) b = 
+      let menu = extractMenu f p []
+      in H.div [A.class_ "content"]
             [H.div [A.class_ "section"]
-                   [ renderMenu m, b ]]
+                   [ renderMenu menu, b ]]
 
     renderMenu :: Menu -> Html
     renderMenu m = H.div [A.class_ "nav"] (renderSubMenu 0 m)
@@ -171,16 +169,14 @@ siteComponent c = do
 
 --------------------------------------------------------------------------------
 
-titleComponent :: FRP (Sink Menu)
-titleComponent = do
-  (u, s) <- newSignal emptyMenu
-  let s' = fmap (JSS.intercalate " ← " . reverse . ("EN" :) . fmap getTitle . flattenMenu) s
-
+titleComponent :: Signal (DT.Forest Page, Path) -> FRP ()
+titleComponent s = do
+  let s' = fmap (JSS.intercalate " ← " . reverse . ("EN" :) . fmap getTitle . flattenMenu . extractMenu') s
   void $ subscribeEvent (updates s') setTitle
 
-  pure u
-
   where
+    extractMenu' (f, p) = extractMenu f p []
+
     flattenMenu MenuNil          = []
     flattenMenu (Menu m MenuNil) = findSelectedItem m
     flattenMenu (Menu m sm)      = findSelectedItem m <> flattenMenu sm

@@ -132,9 +132,9 @@ gistApi :: API
 gistApi = API "https://api.github.com/gists/" []
 
 data DatasourceError = 
-    DatasourceError Menu JSString 
-  | NotFound Menu Path 
-  | Waiting  Menu Path
+    DatasourceError JSString 
+  | NotFound Path 
+  | Waiting Path
 
 -- deriving instance Show DatasourceError
 
