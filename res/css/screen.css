@@ -510,6 +510,8 @@ ul.img-list {
 .article-index-title-date {
   font-size: 80%;
   color: grey;
+  display: inline-block;
+  width: 40px;
 }
 
 .loader-container {
