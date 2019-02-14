@@ -30,10 +30,6 @@ import           Types
 
 data GistStatus = GistPending | GistError DatasourceError | GistReady Gist 
 
-
-
---------------------------------------------------------------------------------    
-
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
   navS <- navComponent 
@@ -148,11 +144,3 @@ siteComponent c = do
     renderFileH :: File -> [Html]
     renderFileH f = htmlStringToVirtualDom $ f_content f
       
-
---------------------------------------------------------------------------------
-
-
-
---------------------------------------------------------------------------------
-
-
