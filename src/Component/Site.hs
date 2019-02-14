@@ -32,12 +32,12 @@ data GistStatus = GistPending | GistError DatasourceError | GistReady Gist
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
-  navS <- navComponent 
+  navS                 <- navComponent 
   (viewU, viewModel)   <- newSignal GistPending
   (stateU, stateModel) <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
 
   let model = (,) <$> stateModel <*> navS :: Signal (DT.Forest Page, Path)                                                 
-  let v     = fmap view ((,) <$> viewModel <*> model)
+  let v     = view <$> viewModel <*> model
   
   void $ titleComponent model
   void $ subscribeEvent (updates model) $ handleModel viewU
@@ -85,34 +85,34 @@ siteComponent c = do
                       Left  m   -> viewU $ GistError $ DatasourceError (message m)
                       Right a'' -> f a''
 
-    view :: (GistStatus, (DT.Forest Page, Path)) -> Html
-    view (GistPending, m) = 
+    view :: GistStatus -> (DT.Forest Page, Path) -> Html
+    view GistPending m = 
       wrapper m $ H.div [A.class_ "loader-container"] 
                         [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] []
                         , H.text "Loading" ]
 
-    view (GistError (DatasourceError s), m) = 
+    view (GistError (DatasourceError s)) m = 
       wrapper m $ H.div [A.class_ "s500"] 
                         [ -- H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
                           H.span [A.class_ "error-message"] [H.text s ]
                         -- , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
                         ]
                    
-    view (GistError (Waiting ps), m) = 
+    view (GistError (Waiting ps)) m = 
       wrapper m $ H.div [A.class_ "s404"] 
                         [ H.text "Waiting for the forest to grow up at the path "
                         , H.span [A.class_ "path"] [H.text $ renderPath ps ]
                         , H.text "."
                         ]
                    
-    view (GistError (NotFound ps), m) = 
+    view (GistError (NotFound ps)) m = 
       wrapper m $ H.div [A.class_ "s404"] 
                     [ H.text "The path "
                     , H.span [A.class_ "path"] [H.text $ renderPath ps ]
                     , H.text " was not found in this forest."
                     ]
       
-    view (GistReady a, m) = 
+    view (GistReady a) m = 
       wrapper m (gistH $ unfiles $ files a)
     
     wrapper :: (DT.Forest Page, Path) -> Html -> Html
