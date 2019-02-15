@@ -23,6 +23,7 @@ library
                      , Component.Title
                      , Component.Nav
                      , Component.Site
+                     , Component.Login
   build-depends:       base
                      , lubeck-web
                      , lubeck-frp

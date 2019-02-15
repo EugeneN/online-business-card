@@ -105,6 +105,13 @@ iframe {
   /*font-family: "Source Code Pro", sans-serif;*/
   font-family: ff-tisa-web-pro, georgia, serif;
 }
+
+.nav img {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  top: 2px;
+}
 .sub-menu-x { font-size: 12px; }
 .sub-menu-x a {
   margin-left: 0px !important;
@@ -604,4 +611,96 @@ ul.img-list {
 
 .s500, .s404 {
   font-style: italic;
+}
+
+.lock {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.lock .locked {
+  opacity: 0;
+}
+
+.lock .locked:hover {
+  opacity: 0.5;
+}
+
+.lock .unlocked {
+  opacity: 1;
+}
+
+.lock button {
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+} 
+.lock img {
+  width: 20px;
+  height: 20px;
+}
+
+.login-form button {
+  box-shadow: none;
+  box-sizing: border-box;
+  color: rgb(255, 255, 255);
+  display: inline-block;
+  font-family: FuturaStd-Light, futura-pt, sans-serif;
+  font-size: 18px;
+  font-weight: 100;
+  height: 68px;
+  line-height: 24px;
+  margin-bottom: 0px;
+  margin-right: 10px;
+  margin-top: 0px;
+  padding-bottom: 11px;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 11px;
+  text-align: center;
+  text-decoration: none;
+  background-color: black;
+  border: none;
+}
+
+.login-form input {
+  background-color: rgb(255, 255, 255);
+  border: 2px solid rgb(151, 151, 151);
+  color: black;
+  cursor: auto;
+  display: inline-block;
+
+  font-family: FuturaStd-Light, futura-pt, sans-serif;
+  font-size: 18px;
+  font-stretch: normal;
+  font-style: normal;
+  font-variant-caps: normal;
+  font-weight: 100;
+  height: 46px;
+  letter-spacing: normal;
+  line-height: 24px;
+  margin-bottom: 20px;
+  margin-left: 0px;
+  margin-right: 10px;
+  margin-top: 0px;
+  padding-bottom: 10px;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 10px;
+  text-align: start;
+  text-indent: 0px;
+  text-shadow: none;
+  text-transform: none;
+  transition-delay: 0s, 0s;
+  transition-duration: 0.15s, 0.15s;
+  transition-property: border-color, box-shadow;
+  transition-timing-function: ease-in-out, ease-in-out;
+  width: 320px;
+  word-spacing: 0px;
+  writing-mode: horizontal-tb;
 }

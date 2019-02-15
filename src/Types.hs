@@ -18,11 +18,20 @@ import qualified Data.JSString                  as JSS
 import           Data.JSString.Text             (textFromJSString, textToJSString)
 import qualified Data.HashMap.Strict            as HM    
 import           Data.Monoid                    ((<>))
-import           Data.Time                      (UTCTime)
 import qualified Data.Text                      as T
+import           Data.Time                      (UTCTime)
+import qualified Data.Tree                      as DT
 
 import           Lubeck.Util                    (showJS)
 
+
+type AuthKey = JSString
+
+data ViewMode = Site | Login
+
+data Lock = Locked | Unlocked AuthKey
+
+type Model = (DT.Forest Page, Path, Lock)
 
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON

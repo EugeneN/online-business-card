@@ -31,13 +31,13 @@ import           Lib
 import           UICombinators
 
 
-titleComponent :: Signal (DT.Forest Page, Path) -> FRP ()
+titleComponent :: Signal Model -> FRP ()
 titleComponent s = do
   let s' = fmap (JSS.intercalate " ← " . reverse . ("EN" :) . fmap getTitle . flattenMenu . extractMenu') s
   void $ subscribeEvent (updates s') setTitle
 
   where
-    extractMenu' (f, p) = extractMenu f p []
+    extractMenu' (f, p, _) = extractMenu f p []
 
     flattenMenu MenuNil          = []
     flattenMenu (Menu m MenuNil) = findSelectedItem m
