@@ -7,6 +7,7 @@ module Component.Login
     ) where
 
 import           GHCJS.Types                    (JSString)
+import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void)
 import           Data.Monoid                    ((<>))
 import qualified Web.VirtualDom.Html            as H
@@ -38,7 +39,7 @@ loginComponent loginToggleU = do
   (u, xe) <- newEvent
   (v, e, reset) <- formC emptyForm (w loginToggleU)
 
-  void $ subscribeEvent e $ \lp -> do
+  void $ subscribeEvent e $ \lp -> void . forkIO $ do
     ok <- validate lp
     case ok of
       FormValid usr  -> reset >> u usr
@@ -61,9 +62,10 @@ loginComponent loginToggleU = do
       pure res
 
       where
-        api = userApi { headers = [authHeader] }
+        api = userApi { headers = [authHeader, ct] }
         authHeader = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
         base64encode = btoa
+        ct = ("Content-Type", "application/json")
 
     formC ::  a -> Widget a (Submit a) -> IO (Signal Html, Events a, FRP ())
     formC z widget = do
