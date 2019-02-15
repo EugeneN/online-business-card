@@ -52,7 +52,7 @@ loginComponent loginToggleU = do
     validate (LoginForm u p) = do
       r <- authenticateOrError (u, p)
       pure $ case r of
-        Left e  -> FormNotValid e
+        Left e    -> FormNotValid e
         Right usr -> FormValid $ AuthKey u p usr
     
     authenticateOrError :: (JSString, JSString) -> IO (Either DatasourceError GithubUser)
@@ -61,10 +61,10 @@ loginComponent loginToggleU = do
       pure res
 
       where
-        api = userApi { headers = [authHeader, ct] }
-        authHeader = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
+        api  = userApi { headers = [auth, ct] }
+        auth = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
+        ct   = ("Content-Type", "application/json")
         base64encode = btoa
-        ct = ("Content-Type", "application/json")
 
     formC ::  a -> Widget a (Submit a) -> IO (Signal Html, Events a, FRP ())
     formC z widget = do

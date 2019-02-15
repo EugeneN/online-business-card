@@ -13,7 +13,7 @@ import qualified Data.JSString                  as JSS
 import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid                    ((<>))
 import qualified Data.Tree                      as DT
-import           Control.Concurrent             (forkIO, threadDelay)
+import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void, join)
 import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom.Html.Attributes as A    
@@ -45,17 +45,15 @@ siteComponent c = do
   (lockCmdU, lockCmdE)         <- newEvent :: FRP (Sink LockCmd, Events LockCmd)
   (lockU, lockS)               <- newSignal Locked
 
-  let model = (,,) <$> stateModel <*> navS <*> lockS :: Signal Model                                                 
-  let v     = view lockCmdU <$> viewModel <*> model
-  let v'    = layout <$> loginToggleS <*> v <*> (fmap wrapper' lv)
+  let model_ = (,) <$> stateModel <*> navS :: Signal Model_                                                 
+  let model  = (,,) <$> stateModel <*> navS <*> lockS :: Signal Model                                                 
+  let v      = view lockCmdU <$> viewModel <*> model
+  let v'     = layout <$> loginToggleS <*> v <*> lv
   
   void $ titleComponent model
-  void $ subscribeEvent (updates model) $ handleModel viewU
+  void $ subscribeEvent (updates model_) $ handleModel viewU
   void $ subscribeEvent lockCmdE $ controller loginToggleU lockU
-  void $ subscribeEvent le $ \authkey -> do
-    loginToggleU Site 
-    threadDelay 100000 -- TODO prevent overlapping renderings in runAppReactive
-    lockU (Unlocked authkey)
+  void $ subscribeEvent le $ \authkey -> loginToggleU Site >> lockU (Unlocked authkey)
 
   loadMenu stateU viewU
 
@@ -65,7 +63,7 @@ siteComponent c = do
     layout :: ViewMode -> Html -> Html -> Html
     layout s sv lv = case s of
       Site  -> sv
-      Login -> lv
+      Login -> wrapper' lv
 
     controller :: Sink ViewMode -> Sink Lock -> LockCmd -> FRP ()
     controller loginToggleU lockU cmd = do
@@ -74,8 +72,8 @@ siteComponent c = do
         CLock      -> loginToggleU Site >> lockU Locked
         CUnlock    -> loginToggleU Login
 
-    handleModel :: Sink ViewState -> Model -> FRP ()
-    handleModel viewU (f, p, _) = 
+    handleModel :: Sink ViewState -> Model_ -> FRP ()
+    handleModel viewU (f, p) = 
       case findTreeByPath f p of
         Nothing -> case (f, p) of
           ([], [])           -> viewU (GistPending Nothing)

@@ -37,6 +37,7 @@ data ViewMode = Site | Login
 data Lock = Locked | Unlocked AuthKey
 
 type Model = (DT.Forest Page, Path, Lock)
+type Model_ = (DT.Forest Page, Path)
 
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON
