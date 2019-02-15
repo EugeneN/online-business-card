@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE JavaScriptFFI     #-}
 
 module Lib 
  ( htmlStringToVirtualDom
@@ -6,6 +7,8 @@ module Lib
  , text2jss
  , newSignal
  , extractMenu
+ , isLocalhost
+ , redirectToHTTPS
  ) where
 
 import           Data.JSString                  (JSString)
@@ -20,6 +23,8 @@ import qualified Text.XML.Light.Types           as XMLT
 
 import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom                 as VirtualDom
+
+import qualified JavaScript.Web.Location       as WL
 
 import           Lubeck.App                     (Html)
 import           Lubeck.FRP   
@@ -114,3 +119,12 @@ htmlStringToVirtualDom s = fmap go htmlAST
                                                      then VirtualDom.attribute (JSS.pack key) (JSS.pack val)
                                                      else VirtualDom.attribute ("invalid-attr:" <> JSS.pack key) ""
 
+
+foreign import javascript unsafe "if (location.protocol == 'http:') { location.href = 'https:' + window.location.href.substring(window.location.protocol.length); }"
+  redirectToHTTPS :: IO ()
+
+isLocalhost :: IO Bool
+isLocalhost = do
+  loc <- WL.getWindowLocation
+  host <- WL.getHostname loc
+  pure $ host == "localhost" || host == "127.0.0.1" || host == ""  -- XXX consider CIDR 127.

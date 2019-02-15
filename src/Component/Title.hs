@@ -7,28 +7,14 @@ module Component.Title
     ) where
 
 import           GHCJS.Types                    (JSString)
-import           GHCJS.Foreign.Callback
-import           Data.Aeson
-import qualified Data.ByteString.Char8          as BS
+import           Control.Monad                  (void)
 import qualified Data.JSString                  as JSS      
-import           Data.Maybe                     (listToMaybe)
 import           Data.Monoid                    ((<>))
-import qualified Data.Tree                      as DT
-import           Control.Concurrent             (forkIO)
-import           Control.Monad                  (void, join)
-import qualified Web.VirtualDom.Html            as H
-import qualified Web.VirtualDom.Html.Attributes as A    
-import qualified Web.VirtualDom.Html.Events     as E    
 
-import           Lubeck.App                     (Html, KbdEvents(..))
 import           Lubeck.FRP                     
-import           Lubeck.Util                    (showJS)
-import           Lubeck.Web.URI                 (decodeURIComponent)
 
-import           Net
 import           Types
 import           Lib
-import           UICombinators
 
 
 titleComponent :: Signal Model -> FRP ()
