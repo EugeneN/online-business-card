@@ -645,6 +645,10 @@ ul.img-list {
   height: 20px;
 }
 
+.login-form {
+  text-align: center;
+}
+
 .login-form button {
   box-shadow: none;
   box-sizing: border-box;

@@ -13,7 +13,7 @@ import qualified Data.JSString                  as JSS
 import           Data.Maybe                     (fromMaybe)
 import           Data.Monoid                    ((<>))
 import qualified Data.Tree                      as DT
-import           Control.Concurrent             (forkIO)
+import           Control.Concurrent             (forkIO, threadDelay)
 import           Control.Monad                  (void, join)
 import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom.Html.Attributes as A    
@@ -52,7 +52,10 @@ siteComponent c = do
   void $ titleComponent model
   void $ subscribeEvent (updates model) $ handleModel viewU
   void $ subscribeEvent lockCmdE $ controller loginToggleU lockU
-  void $ subscribeEvent le $ \authkey -> lockU (Unlocked authkey) >> loginToggleU Site 
+  void $ subscribeEvent le $ \authkey -> do
+    loginToggleU Site 
+    threadDelay 100000 -- TODO prevent overlapping renderings in runAppReactive
+    lockU (Unlocked authkey)
 
   loadMenu stateU viewU
 

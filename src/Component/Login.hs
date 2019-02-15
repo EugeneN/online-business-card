@@ -54,7 +54,6 @@ loginComponent loginToggleU = do
       pure $ case r of
         Left e  -> FormNotValid e
         Right usr -> FormValid $ AuthKey u p usr
-
     
     authenticateOrError :: (JSString, JSString) -> IO (Either DatasourceError GithubUser)
     authenticateOrError (unm, psw) = do
