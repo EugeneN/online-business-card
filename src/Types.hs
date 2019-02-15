@@ -25,6 +25,12 @@ import qualified Data.Tree                      as DT
 import           Lubeck.Util                    (showJS)
 
 
+jss2text :: JSString -> T.Text
+jss2text = T.pack . JSS.unpack
+
+text2jss :: T.Text -> JSString 
+text2jss = JSS.pack . T.unpack
+
 data AuthKey = 
   AuthKey 
     { username :: JSString
@@ -32,7 +38,7 @@ data AuthKey =
     , user     :: GithubUser
     }
 
-data ViewMode = Site | Login
+data ViewMode = Site | Login | Editor
 
 data Lock = Locked | Unlocked AuthKey
 
@@ -73,13 +79,18 @@ data Mimetype =
   | UnknownMimetype JSString
   deriving (Show)
 
+instance ToJSON Mimetype where
+  toJSON Plaintext           = "text/plain"
+  toJSON (OtherMimetype x)   = String . jss2text $ x
+  toJSON (UnknownMimetype x) = String . jss2text $ x
+
 instance FromJSON Mimetype where
   parseJSON (String "text/plain") = pure Plaintext
   parseJSON (String x)            = pure $ OtherMimetype $ showJS x
   parseJSON x                     = pure $ UnknownMimetype $ showJS x
 
 instance FromJSON GistId where
-  parseJSON (String x) = pure . GistId . JSS.pack . T.unpack $ x
+  parseJSON (String x) = pure . GistId . text2jss $ x
   parseJSON _          = mzero
 
 instance ToJSON GistId where
@@ -89,8 +100,15 @@ instance FromJSON Files where
   parseJSON (Object x) = Files <$> mapM parseJSON (HM.elems x)
   parseJSON _          = mzero
 
+instance ToJSON Files where
+  toJSON (Files [])    = object [ ]
+  toJSON (Files (x:_)) = object [ jss2text (f_filename x) .= toJSON x ]
+
 instance FromJSON File where
   parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = Prelude.drop $ Prelude.length ("f_" :: String)}
+
+instance ToJSON File where
+  toJSON = genericToJSON defaultOptions {fieldLabelModifier = drop $ length ("f_" :: String)}
 
 newtype Files = 
   Files 
@@ -117,7 +135,7 @@ data Gist =
     , id          :: GistId
     , description :: JSString
     , files       :: Files 
-    } deriving (GHC.Generic, FromJSON, Show)
+    } deriving (GHC.Generic, FromJSON, ToJSON, Show)
 
 type ApiResult = Either Message Gist
 

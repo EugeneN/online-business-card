@@ -24,6 +24,7 @@ library
                      , Component.Nav
                      , Component.Site
                      , Component.Login
+                     , Component.Editor
   build-depends:       base
                      , lubeck-web
                      , lubeck-frp

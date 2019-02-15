@@ -3,8 +3,6 @@
 
 module Lib 
  ( htmlStringToVirtualDom
- , jss2text
- , text2jss
  , newSignal
  , extractMenu
  , isLocalhost
@@ -16,7 +14,6 @@ import           Data.JSString                  (JSString)
 import qualified Data.JSString                  as JSS  
 import           Data.Maybe                     (listToMaybe)
 import           Data.Monoid ((<>))
-import qualified Data.Text                      as T
 import qualified Data.Tree                      as DT
 
 import qualified Text.XML.Light.Input           as XMLI
@@ -32,12 +29,6 @@ import           Lubeck.FRP
 
 import           Types
 
-
-jss2text :: JSString -> T.Text
-jss2text = T.pack . JSS.unpack
-
-text2jss :: T.Text -> JSString 
-text2jss = JSS.pack . T.unpack
 
 newSignal :: a -> FRP (Sink a, Signal a)
 newSignal z = do
