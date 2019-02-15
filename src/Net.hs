@@ -6,6 +6,7 @@
 
 module Net
     ( loadGist
+    , getAPI
     ) where
 
 import           GHCJS.Types                   (JSString)
@@ -13,7 +14,7 @@ import           JavaScript.Web.XMLHttpRequest
 import           Data.Aeson
 import           Data.ByteString
 import qualified Data.JSString
-import           Data.Monoid ((<>))
+import           Data.Monoid                   ((<>))
 import           Data.String                   (fromString)
 import           Control.Exception
 import           Control.Monad.Except

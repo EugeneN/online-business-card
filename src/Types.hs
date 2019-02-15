@@ -25,7 +25,12 @@ import qualified Data.Tree                      as DT
 import           Lubeck.Util                    (showJS)
 
 
-type AuthKey = JSString
+data AuthKey = 
+  AuthKey 
+    { username :: JSString
+    , password :: JSString
+    , user     :: GithubUser
+    }
 
 data ViewMode = Site | Login
 
@@ -140,11 +145,14 @@ data API =
 gistApi :: API
 gistApi = API "https://api.github.com/gists/" []
 
+userApi :: API
+userApi = API "https://api.github.com/user" []
+
 data DatasourceError = 
     DatasourceError JSString 
   | NotFound Path 
 
--- deriving instance Show DatasourceError
+deriving instance Show DatasourceError
 
 newtype MenuLevel = 
   MenuLevel 
@@ -163,6 +171,40 @@ data MenuItem =
     MISelected JSString Path 
   | MIUnselected JSString Path 
   deriving (Show)
+
+data GithubUser = 
+  GithubUser
+    { gu_login                     :: JSString 
+    , gu_id                        :: Int 
+    , gu_avatar_url                :: Url 
+    , gu_url                       :: Url 
+    , gu_html_url                  :: Url 
+    , gu_followers_url             :: Url 
+    , gu_following_url             :: Url 
+    , gu_gists_url                 :: Url 
+    , gu_starred_url               :: Url 
+    , gu_subscriptions_url         :: Url 
+    , gu_organizations_url         :: Url 
+    , gu_repos_url                 :: Url 
+    , gu_events_url                :: Url 
+    , gu_received_events_url       :: Url 
+    , gu_name                      :: JSString 
+    , gu_public_repos              :: Int 
+    , gu_public_gists              :: Int 
+    , gu_followers                 :: Int 
+    , gu_following                 :: Int 
+    , gu_created_at                :: UTCTime 
+    , gu_updated_at                :: UTCTime 
+    , gu_private_gists             :: Int 
+    , gu_total_private_repos       :: Int 
+    , gu_owned_private_repos       :: Int 
+    , gu_disk_usage                :: Int 
+    , gu_collaborators             :: Int 
+    , gu_two_factor_authentication :: Bool 
+    } deriving (GHC.Generic)  
+
+instance FromJSON GithubUser where
+  parseJSON = genericParseJSON defaultOptions {fieldLabelModifier = Prelude.drop $ Prelude.length ("gu_" :: String)}
 
 -- blog1Page   = DT.Node (Page "Blog 1" "blog1" (GistId "?")) []
 -- blog2Page   = DT.Node (Page "Blog 2" "blog2" (GistId "?")) []

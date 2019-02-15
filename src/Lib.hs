@@ -9,6 +9,7 @@ module Lib
  , extractMenu
  , isLocalhost
  , redirectToHTTPS
+ , btoa
  ) where
 
 import           Data.JSString                  (JSString)
@@ -119,6 +120,8 @@ htmlStringToVirtualDom s = fmap go htmlAST
                                                      then VirtualDom.attribute (JSS.pack key) (JSS.pack val)
                                                      else VirtualDom.attribute ("invalid-attr:" <> JSS.pack key) ""
 
+
+foreign import javascript unsafe "btoa($1)" btoa :: JSString -> JSString
 
 foreign import javascript unsafe "if (location.protocol == 'http:') { location.href = 'https:' + window.location.href.substring(window.location.protocol.length); }"
   redirectToHTTPS :: IO ()

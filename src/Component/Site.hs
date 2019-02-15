@@ -39,7 +39,7 @@ siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
   navS                         <- navComponent 
   (loginToggleU, loginToggleS) <- newSignal Site
-  (lv, le)                     <- loginComponent loginToggleU
+  (lv, le)                     <- loginComponent loginToggleU :: FRP (Signal Html, Events AuthKey)
   (viewU, viewModel)           <- newSignal (GistPending Nothing)
   (stateU, stateModel)         <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
   (lockCmdU, lockCmdE)         <- newEvent :: FRP (Sink LockCmd, Events LockCmd)
@@ -52,7 +52,7 @@ siteComponent c = do
   void $ titleComponent model
   void $ subscribeEvent (updates model) $ handleModel viewU
   void $ subscribeEvent lockCmdE $ controller loginToggleU lockU
-  void $ subscribeEvent le $ \validPass -> lockU (Unlocked validPass) >> loginToggleU Site 
+  void $ subscribeEvent le $ \authkey -> lockU (Unlocked authkey) >> loginToggleU Site 
 
   loadMenu stateU viewU
 
