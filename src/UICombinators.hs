@@ -26,6 +26,19 @@ stringWidget focus sink value =
   where
     fcs = [A.autofocus True | focus]
 
+passwordWidget :: Bool -> Widget' JSString
+passwordWidget focus sink value =
+  H.input
+    ([ A.type_ "password"
+    -- TODO size
+    , A.class_ "form-control"
+    , A.value value
+    , E.change  $ contramapSink E.value sink
+    , E.keyup $ contramapSink E.value sink
+    ] <> fcs) []
+  where
+    fcs = [A.autofocus True | focus]
+
 richEditorWidget :: Bool -> Widget' JSString
 richEditorWidget focus sink value =
   H.div [A.class_ "noui"]

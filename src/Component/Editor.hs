@@ -62,7 +62,7 @@ editorComponent loginToggleU lockS = do
   pure (v, inpU, outpE)
 
   where
-    saveGist_ :: AuthKey -> Gist -> IO (Either DatasourceError GithubUser)
+    saveGist_ :: AuthKey -> Gist -> IO (Either DatasourceError Gist)
     saveGist_ ak g = do
       r <- patchAPI api (getGistId $ Types.id g) g
       pure r

@@ -16,7 +16,7 @@ import qualified Web.VirtualDom.Html.Events     as E
 
 import           Lubeck.App                     (Html)
 import           Lubeck.FRP                     
-import           Lubeck.Forms                     
+import           Lubeck.Forms                   hiding (passwordWidget)                  
 
 import           Lib
 import           Net
@@ -78,8 +78,8 @@ loginComponent loginToggleU = do
     w loginToggleU' u v@(LoginForm uname pass) =  
       H.div [A.class_ "login-form"] 
             [ H.h1 [] [H.text "Login"]
-            , H.div [] [stringWidget True  (contramapSink (\n -> DontSubmit $ LoginForm n pass)  u) uname]
-            , H.div [] [stringWidget False (contramapSink (\n -> DontSubmit $ LoginForm uname n) u) pass]
+            , H.div [] [stringWidget   True  (contramapSink (\n -> DontSubmit $ LoginForm n pass)  u) uname]
+            , H.div [] [passwordWidget False (contramapSink (\n -> DontSubmit $ LoginForm uname n) u) pass]
             , H.button [E.click $ \_ -> u $ Submit v] [H.text "Dare"]
             , H.button [E.click $ \_ -> loginToggleU' Site] [H.text "Sorry"]
             ]
