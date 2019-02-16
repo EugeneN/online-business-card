@@ -38,20 +38,20 @@ data Cmd = CLock | CUnlock | CEdit (Either RootGist Gist) deriving (Show)
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
-  (rootU, rootS)               <- newSignal Nothing
-  navS                         <- navComponent 
-  (lockU, lockS)               <- newSignal Locked
-  (uiToggleU, loginToggleS) <- newSignal Site
-  (lv, le)                     <- loginComponent uiToggleU :: FRP (Signal Html, Events AuthKey)
-  (ev, edU, ee)                <- editorComponent uiToggleU lockS :: FRP (Signal Html, Sink (Either RootGist Gist), Events (Either RootGist Gist))
-  (viewU, viewModel)           <- newSignal (GistPending Nothing)
-  (stateU, stateModel)         <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
-  (cmdU, cmdE)                 <- newEvent :: FRP (Sink Cmd, Events Cmd)
+  (rootU, rootS)         <- newSignal Nothing
+  navS                   <- navComponent 
+  (lockU, lockS)         <- newSignal Locked
+  (uiToggleU, uiToggleS) <- newSignal Site
+  (lv, le)               <- loginComponent uiToggleU :: FRP (Signal Html, Events AuthKey)
+  (ev, edU, ee)          <- editorComponent uiToggleU lockS :: FRP (Signal Html, Sink (Either RootGist Gist), Events (Either RootGist Gist))
+  (viewU, viewModel)     <- newSignal (GistPending Nothing)
+  (stateU, stateModel)   <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
+  (cmdU, cmdE)           <- newEvent :: FRP (Sink Cmd, Events Cmd)
 
   let model_ = (,) <$> stateModel <*> navS :: Signal Model_                                                 
   let model  = (,,,) <$> stateModel <*> navS <*> lockS <*> rootS :: Signal Model                                                 
   let v      = view cmdU <$> viewModel <*> model
-  let v'     = layout <$> loginToggleS <*> v <*> lv <*> ev
+  let v'     = layout <$> uiToggleS <*> v <*> lv <*> ev
   
   void $ titleComponent model
   void $ subscribeEvent (updates model_) $ handleModel viewU
