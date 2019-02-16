@@ -13,37 +13,73 @@
 
   This command makes use of `sws` - a simple Haskell web server - to serve static content from the `dist` directory. If you have no `sws` installed feel free to use any other preferred web server serving files from the same directory.
 
-## Use for yourself 
+## Use for yourself (no programming needed)
 
 - Copy the contents of the `dist` directory to your web server path.
-- Create a Github Gist containing a json representation of the `Data.Tree` site tree (or use the example below.). 
+- Create a Github Gist containing a **json** representation of the `Data.Tree` site tree (or edit the json example below.). 
 - Replace a root gist id in the `index.html` file with the id of your root gist:
 
-  `<script>window.RootG=JSON.stringify({"rootGist":"-your-gist-id-here-"})</script>`
+  `<script>window.RootG=JSON.stringify({"rootGist":"<your-gist-id-here>"})</script>`
 - Open the page in a browser.
 
 
 ## Example root gist
+
+`dataSource` is a gist id. Gist is expected to contain an **html** string.
+
+`title` is menu item title as shown in the menu.
+
+`path` is slug.
+
 
 ```json
 
 [
     [
         {
-            "dataSource": "<a gist id here>",
-            "title": "Menu 1",
-            "path": "menu1"
+            "dataSource": "<gist-id>",
+            "title": "Menu item 1",
+            "path": "item1"
         },
-        []
+        [
+            [
+                {
+                    "dataSource": "<gist-id>",
+                    "title": "Submenu level 1 item 1",
+                    "path": "subitem1"
+                },
+                []
+            ],
+            [
+                {
+                    "dataSource": "<gist-id>",
+                    "title": "Submenu level 1 item 2",
+                    "path": "subitem2"
+                },
+                [
+                    [
+                        {
+                            "dataSource": "<gist-id>",
+                            "title": "Submenu level 2 item 1",
+                            "path": "subsubitem1"
+                        },
+                        []
+                    ],
+                    ...
+                ]
+            ],
+            ...
+        ]
     ],
     [
         {
-            "dataSource": "<another gist id here>",
-            "title": "Menu 2",
-            "path": "menu2"
+            "dataSource": "<gist-id>",
+            "title": "Menu item s",
+            "path": "item2"
         },
         []
-    ]
-]P
+    ],
+    ...
+]
 
 ```
