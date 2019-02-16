@@ -67,7 +67,7 @@ siteComponent c = do
     layout s sv lv ev = case s of
       Site   -> H.div [] [sv]
       Login  -> H.div [] [wrapper' lv]
-      Editor -> H.div [] [sv, overlayWrapper ev]
+      Editor -> H.div [] [overlayWrapper ev]
 
     controller :: Sink ViewMode -> Sink Lock -> Sink Gist -> Cmd -> FRP ()
     controller loginToggleU lockU edU cmd = do

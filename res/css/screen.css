@@ -719,3 +719,15 @@ ul.img-list {
   margin-left : -400px;
   padding     : 0;
 }
+
+.overlay .section {
+  height: 100%;
+}
+
+.editor-form {
+  height: 100%;
+}
+
+.editor-widget {
+  height: 100%;
+}

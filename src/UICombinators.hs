@@ -41,7 +41,7 @@ passwordWidget focus sink value =
 
 richEditorWidget :: Bool -> Widget' JSString
 richEditorWidget focus sink value =
-  H.div [A.class_ "noui"]
+  H.div [A.class_ "editor-widget noui"]
         [ H.textarea
             ([ A.class_ "form-control"
               , E.change handler

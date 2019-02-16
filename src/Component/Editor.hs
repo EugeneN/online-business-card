@@ -88,5 +88,5 @@ editorComponent loginToggleU lockS = do
       H.div [A.class_ "editor-form"] 
             [ H.button [E.click $ \_ -> u $ Submit (g, f, c)] [H.text "Save"]
             , H.button [E.click $ \_ -> u (DontSubmit emptyForm) >> loginToggleU_ Site] [H.text "Cancel"]
-            , H.div [] [richEditorWidget True (contramapSink (\n -> DontSubmit (g, f, n)) u) c]
+            , richEditorWidget True (contramapSink (\n -> DontSubmit (g, f, n)) u) c
             ]
