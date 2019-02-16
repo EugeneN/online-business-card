@@ -162,8 +162,8 @@ siteComponent c = do
     editButton :: Sink Cmd -> Either (Maybe RootGist) Gist -> Lock -> [Html]
     editButton cmdU (Right g)       (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit $ Right g] [H.text "Edit"]]
     editButton cmdU (Left (Just g)) (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit $ Left g]  [H.text "Edit"]]
-    editButton cmdU (Left Nothing)  _            = [H.text "No root gist"]
-    editButton _    _                 Locked       = []
+    editButton _    (Left Nothing)  _            = [H.text "No root gist o_O"]
+    editButton _    _               Locked       = []
     
     overlayWrapper :: Html -> Html
     overlayWrapper b = 
@@ -171,10 +171,8 @@ siteComponent c = do
             [H.div [A.class_ "section"] [ b ]]
 
     renderMenu :: Sink Cmd -> Lock -> Maybe RootGist -> Menu -> Html
-    renderMenu cmdU k r m = 
-      case k of
-        Locked     -> H.div [A.class_ "nav"] (renderSubMenu 0 m)
-        Unlocked _ -> H.div [A.class_ "nav"] (renderSubMenu 0 m <> editButton cmdU (Left r) k)
+    renderMenu _    Locked         _ m = H.div [A.class_ "nav"] (renderSubMenu 0 m)
+    renderMenu cmdU k@(Unlocked _) r m = H.div [A.class_ "nav"] (renderSubMenu 0 m <> editButton cmdU (Left r) k)
 
     renderSubMenu :: Int -> Menu -> [Html]
     renderSubMenu _ MenuNil                       = []

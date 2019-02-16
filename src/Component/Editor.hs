@@ -45,42 +45,39 @@ editorComponent uiToggleU lockS = do
     g <- case xg of
             Left  x -> tU RootG >> pure (digout x)
             Right y -> tU JustG >> pure y
-    let fs = files g
-        f = listToMaybe $ unfiles fs
     
-    case f of
-      Nothing -> print "Bad gist" 
-      Just f' -> do
-        reset (g, f', f_content f')
-        uiToggleU Editor
+    case listToMaybe . unfiles . files $ g of
+      Nothing -> print ("Bad gist" :: JSString) 
+      Just f' -> reset (g, f', f_content f') >> uiToggleU Editor
 
   void $ subscribeEvent e $ \(g, f, c) -> void . forkIO $ do
-    let c' = JSS.replace "</p>" "" . JSS.replace "<p>" "" $ c -- FIXME ckeditor keeps wrapping content into <p>..</p>
+    a <- pollBehavior $ current lockS
+    t <- pollBehavior $ current tS
+
+    let c' = case t of
+                RootG -> JSS.dropEnd 4 . JSS.drop 3 $ c -- FIXME ckeditor keeps wrapping content into <p>..</p>
+                _     -> c
         f' = f{f_content = c'}
         g' = g{files = Files [f']}
-
-    a <- pollBehavior $ current lockS
-    case a of
-      Locked -> print "Not logged in" >> pure ()
-      Unlocked ak -> do
-        r <- saveGist_ ak g'
-        case r of
-          Right _ -> do
-            t <- pollBehavior $ current tS
-            case t of
-              None  -> print "Wrong editor state None"
-              RootG -> reset emptyForm >> uiToggleU Site >> outpU (Left $ RootGist g)
-              JustG -> reset emptyForm >> uiToggleU Site >> outpU (Right g)
-          Left x  -> print $ "Error saving gist: " <> showJS x
+    
+    case (a, t) of
+      (Locked, _)         -> print ("Not logged in" :: JSString) >> pure ()
+      (Unlocked _,  None) -> print ("Wrong editor state None" :: JSString)
+      (Unlocked ak, _)    -> saveGist_ ak g' >>= handleResult reset uiToggleU outpU t
 
   pure (v, inpU, outpE)
 
   where
-    saveGist_ :: AuthKey -> Gist -> IO (Either DatasourceError Gist)
-    saveGist_ ak g = do
-      r <- patchAPI api (getGistId $ Types.id g) g
-      pure r
+    handleResult :: (EditForm -> FRP ()) -> Sink ViewMode -> Sink (Either RootGist Gist) ->  CType 
+                 -> Either DatasourceError Gist -> FRP ()
+    handleResult reset uiToggleU outpU t (Right g) = case t of
+          None  -> print ("Wrong editor state None" :: JSString)
+          RootG -> reset emptyForm >> uiToggleU Site >> outpU (Left $ RootGist g)
+          JustG -> reset emptyForm >> uiToggleU Site >> outpU (Right g)
+    handleResult _ _ _ _ (Left x) = print $ "Error saving gist: " <> showJS x
 
+    saveGist_ :: AuthKey -> Gist -> IO (Either DatasourceError Gist)
+    saveGist_ ak g = patchAPI api (getGistId $ Types.id g) g
       where
         unm  = username ak
         psw  = password ak
@@ -92,7 +89,7 @@ editorComponent uiToggleU lockS = do
     formC ::  a -> Widget a (Submit a) -> IO (Signal Html, Events a, a -> FRP ())
     formC z widget = do
       (aSink, aEvent) <- newEvent :: IO (Sink (Submit a), Events (Submit a))
-      aS <- stepperS (DontSubmit z) aEvent
+      aS              <- stepperS (DontSubmit z) aEvent
       let htmlS = fmap (widget aSink . submitValue) aS
       let reset = aSink . DontSubmit
       pure (htmlS, submits aEvent, reset)
