@@ -35,4 +35,5 @@ CKEDITOR.editorConfig = function( config ) {
 	config.width = '100%';
 	config.protectedSource.push( /\n/g );
 	config.allowedContent = true;
+	config.entities = false;
 };

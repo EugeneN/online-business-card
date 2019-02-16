@@ -489,6 +489,7 @@ ul.img-list {
 .articles-index a:hover {
   /*text-decoration: underline;*/
   border-bottom: 3px solid grey;
+  text-decoration: none !important;
 }
 
 .articles-index span {
@@ -497,7 +498,7 @@ ul.img-list {
 }
 .articles-index a {
   display: inline-block;;
-  text-decoration: underline !important;
+  text-decoration: none !important;
   color: black;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
