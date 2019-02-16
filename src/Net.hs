@@ -71,8 +71,8 @@ getAPI api pathSuffix = do
 
 patchAPI :: (ToJSON a, FromJSON b, Monad m, MonadIO m) 
          => API -> JSString -> a -> m (Either DatasourceError b)
-patchAPI api path value = do
-  requestURI   <- liftIO $ mkAPIpath api path
+patchAPI api pathSuffix value = do
+  requestURI   <- liftIO $ mkAPIpath api pathSuffix
   body         <- liftIO $ encodeJSString value
   eitherResult <- liftIO (try $ xhrByteString (request requestURI body) :: IO (Either XHRError (Response ByteString)))
   case eitherResult of

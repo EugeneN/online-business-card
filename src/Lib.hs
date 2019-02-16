@@ -8,8 +8,13 @@ module Lib
  , isLocalhost
  , redirectToHTTPS
  , btoa
+ , readConfig
+ , writeConfig
+ , pureMsg
  ) where
 
+import           Data.Aeson
+import qualified Data.ByteString.Char8          as BS
 import           Data.JSString                  (JSString)
 import qualified Data.JSString                  as JSS  
 import           Data.Maybe                     (listToMaybe)
@@ -20,15 +25,20 @@ import qualified Text.XML.Light.Input           as XMLI
 import qualified Text.XML.Light.Types           as XMLT
 
 import qualified Web.VirtualDom.Html            as H
+import qualified Web.VirtualDom.Html.Attributes as A  
 import qualified Web.VirtualDom                 as VirtualDom
 
 import qualified JavaScript.Web.Location       as WL
 
 import           Lubeck.App                     (Html)
 import           Lubeck.FRP   
+import           Lubeck.Util   
 
 import           Types
 
+
+pureMsg :: JSString -> Signal Html
+pureMsg x = pure $ H.div [A.class_ "pure-msg"] [H.text x] 
 
 newSignal :: a -> FRP (Sink a, Signal a)
 newSignal z = do
@@ -116,6 +126,19 @@ foreign import javascript unsafe "btoa($1)" btoa :: JSString -> JSString
 
 foreign import javascript unsafe "if (location.protocol == 'http:') { location.href = 'https:' + window.location.href.substring(window.location.protocol.length); }"
   redirectToHTTPS :: IO ()
+
+foreign import javascript unsafe "window.RootG ? window.RootG.toString() : '' "
+  getConfig :: IO JSString
+
+readConfig :: IO (Either JSString SiteConfig)
+readConfig = do
+  c <- getConfig 
+  pure $ case eitherDecodeStrict' . BS.pack . JSS.unpack $ c of
+    Left x   -> Left $ showJS x
+    Right c' -> Right c'
+
+writeConfig :: SiteConfig -> IO ()
+writeConfig c = print $ encode c
 
 isLocalhost :: IO Bool
 isLocalhost = do

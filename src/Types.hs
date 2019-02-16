@@ -54,6 +54,7 @@ instance ToJSON JSString where
 data SiteConfig = 
   SiteConfig 
     { rootGist :: GistId }
+  deriving (GHC.Generic, ToJSON, FromJSON)
 
 newtype GistId = 
   GistId 
