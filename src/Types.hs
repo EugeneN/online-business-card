@@ -42,7 +42,11 @@ data ViewMode = Site | Login | Editor
 
 data Lock = Locked | Unlocked AuthKey
 
-type Model = (DT.Forest Page, Path, Lock)
+newtype RootGist = 
+  RootGist { digout :: Gist }
+  deriving (Show)
+
+type Model = (DT.Forest Page, Path, Lock, Maybe RootGist)
 type Model_ = (DT.Forest Page, Path)
 
 instance FromJSON JSString where

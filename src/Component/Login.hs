@@ -35,9 +35,9 @@ emptyForm :: LoginForm
 emptyForm = LoginForm "" ""
 
 loginComponent :: Sink ViewMode -> FRP (Signal Html, Events AuthKey)
-loginComponent loginToggleU = do
+loginComponent uiToggleU = do
   (u, xe) <- newEvent
-  (v, e, reset) <- formC emptyForm (w loginToggleU)
+  (v, e, reset) <- formC emptyForm (w uiToggleU)
 
   void $ subscribeEvent e $ \lp -> void . forkIO $ do
     ok <- validate lp
@@ -75,11 +75,11 @@ loginComponent loginToggleU = do
       pure (htmlS, submits aEvent, reset)
 
     w :: Sink ViewMode ->  Widget LoginForm (Submit LoginForm)
-    w loginToggleU' u v@(LoginForm uname pass) =  
+    w uiToggleU' u v@(LoginForm uname pass) =  
       H.div [A.class_ "login-form"] 
             [ H.h1 [] [H.text "Login"]
             , H.div [] [stringWidget   True  (contramapSink (\n -> DontSubmit $ LoginForm n pass)  u) uname]
             , H.div [] [passwordWidget False (contramapSink (\n -> DontSubmit $ LoginForm uname n) u) pass]
             , H.button [E.click $ \_ -> u $ Submit v] [H.text "Dare"]
-            , H.button [E.click $ \_ -> loginToggleU' Site] [H.text "Sorry"]
+            , H.button [E.click $ \_ -> uiToggleU' Site] [H.text "Sorry"]
             ]

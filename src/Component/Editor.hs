@@ -9,6 +9,7 @@ module Component.Editor
 import           GHCJS.Types                    (JSString)
 import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void)
+import qualified Data.JSString                  as JSS   
 import           Data.Monoid                    ((<>))
 import           Data.Maybe                     (listToMaybe)
 import qualified Web.VirtualDom.Html            as H
@@ -18,6 +19,7 @@ import qualified Web.VirtualDom.Html.Events     as E
 import           Lubeck.App                     (Html)
 import           Lubeck.FRP                     
 import           Lubeck.Forms                     
+import           Lubeck.Util                    (showJS)
 
 import           Lib
 import           Net
@@ -27,16 +29,22 @@ import           UICombinators
 
 type EditForm = (Gist, File, JSString)
 
+data CType = None | RootG | JustG
+
 emptyForm :: EditForm
 emptyForm = (Gist Nothing Nothing (GistId "") "" (Files []), File "" "" "" 0 Plaintext, "")
 
-editorComponent :: Sink ViewMode -> Signal Lock -> FRP (Signal Html, Sink Gist, Events Gist)
-editorComponent loginToggleU lockS = do
-  (inpU, inpE)   <- newEvent :: FRP (Sink Gist, Events Gist)
+editorComponent :: Sink ViewMode -> Signal Lock -> FRP (Signal Html, Sink (Either RootGist Gist), Events (Either RootGist Gist))
+editorComponent uiToggleU lockS = do
+  (inpU, inpE)   <- newEvent :: FRP (Sink (Either RootGist Gist), Events (Either RootGist Gist))
+  (tU, tS)       <- newSignal None
   (outpU, outpE) <- newEvent
-  (v, e, reset)  <- formC emptyForm (w loginToggleU)
+  (v, e, reset)  <- formC emptyForm (w uiToggleU)
 
-  void $ subscribeEvent inpE $ \g -> do
+  void $ subscribeEvent inpE $ \xg -> do
+    g <- case xg of
+            Left  x -> tU RootG >> pure (digout x)
+            Right y -> tU JustG >> pure y
     let fs = files g
         f = listToMaybe $ unfiles fs
     
@@ -44,10 +52,11 @@ editorComponent loginToggleU lockS = do
       Nothing -> print "Bad gist" 
       Just f' -> do
         reset (g, f', f_content f')
-        loginToggleU Editor
+        uiToggleU Editor
 
   void $ subscribeEvent e $ \(g, f, c) -> void . forkIO $ do
-    let f' = f{f_content = c}
+    let c' = JSS.replace "</p>" "" . JSS.replace "<p>" "" $ c -- FIXME ckeditor keeps wrapping content into <p>..</p>
+        f' = f{f_content = c'}
         g' = g{files = Files [f']}
 
     a <- pollBehavior $ current lockS
@@ -56,8 +65,13 @@ editorComponent loginToggleU lockS = do
       Unlocked ak -> do
         r <- saveGist_ ak g'
         case r of
-          Right _ -> reset emptyForm >> loginToggleU Site >> outpU g
-          Left x  -> print x
+          Right _ -> do
+            t <- pollBehavior $ current tS
+            case t of
+              None  -> print "Wrong editor state None"
+              RootG -> reset emptyForm >> uiToggleU Site >> outpU (Left $ RootGist g)
+              JustG -> reset emptyForm >> uiToggleU Site >> outpU (Right g)
+          Left x  -> print $ "Error saving gist: " <> showJS x
 
   pure (v, inpU, outpE)
 
