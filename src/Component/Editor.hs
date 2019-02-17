@@ -31,6 +31,8 @@ type EditForm = (Gist, File, JSString)
 
 data CType = None | RootG | JustG
 
+data Busy = Busy | Idle
+
 emptyForm :: EditForm
 emptyForm = (Gist Nothing Nothing (GistId "") "" (Files []), File "" "" "" 0 Plaintext, "")
 
@@ -38,8 +40,11 @@ editorComponent :: Sink ViewMode -> Signal Lock -> FRP (Signal Html, Sink (Eithe
 editorComponent uiToggleU lockS = do
   (inpU, inpE)   <- newEvent :: FRP (Sink (Either RootGist Gist), Events (Either RootGist Gist))
   (tU, tS)       <- newSignal None
+  (busyU, busyS) <- newSignal Idle
   (outpU, outpE) <- newEvent
   (v, e, reset)  <- formC emptyForm (w uiToggleU)
+  let busyV      = fmap busyW busyS
+  let v'         = layout <$> v <*> busyV
 
   void $ subscribeEvent inpE $ \xg -> do
     g <- case xg of
@@ -63,11 +68,19 @@ editorComponent uiToggleU lockS = do
     case (a, t) of
       (Locked, _)         -> print ("Not logged in" :: JSString) >> pure ()
       (Unlocked _,  None) -> print ("Wrong editor state None" :: JSString)
-      (Unlocked ak, _)    -> saveGist_ ak g' >>= handleResult reset uiToggleU outpU t
+      (Unlocked ak, _)    -> busyU Busy >> saveGist_ ak g' >>= handleResult reset uiToggleU outpU t >> busyU Idle
 
-  pure (v, inpU, outpE)
+  pure (v', inpU, outpE)
 
   where
+    layout :: Html -> Html -> Html
+    layout v bv = H.div [] [bv, v]
+
+    busyW :: Busy -> Html
+    busyW Idle = H.div [A.class_ "loader-container"] []
+    busyW Busy = H.div [A.class_ "loader-container-editor"] 
+                       [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] [] ]
+
     handleResult :: (EditForm -> FRP ()) -> Sink ViewMode -> Sink (Either RootGist Gist) ->  CType 
                  -> Either DatasourceError Gist -> FRP ()
     handleResult reset uiToggleU outpU t (Right g) = case t of

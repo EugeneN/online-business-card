@@ -522,6 +522,15 @@ ul.img-list {
   width: 40px;
 }
 
+.loader-container-editor {
+  position: relative;
+  top: -30px;
+  left: 0px;
+  margin: 0;
+  padding: 0;
+  font-style: italic;
+}
+
 .loader-container {
   position: relative;
   top: 20px;

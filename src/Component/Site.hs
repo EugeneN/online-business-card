@@ -126,8 +126,8 @@ siteComponent c = do
     view cmdU (GistPending p) m = 
       let ps = fromMaybe "" $ renderPath <$> p
       in wrapper cmdU [] m $ H.div [A.class_ "loader-container"] 
-                           [ H.div [] [H.text $ "Loading " <> ps]
-                           , H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] [] ]
+                                   [ H.div [] [H.text $ "Loading " <> ps]
+                                   , H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] [] ]
 
     view cmdU (GistError (DatasourceError s)) m = 
       wrapper cmdU [] m $ H.div [A.class_ "s500"] 
