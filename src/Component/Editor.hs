@@ -68,7 +68,7 @@ editorComponent uiToggleU lockS = do
     case (a, t) of
       (Locked, _)         -> print ("Not logged in" :: JSString) >> pure ()
       (Unlocked _,  None) -> print ("Wrong editor state None" :: JSString)
-      (Unlocked ak, _)    -> busyU Busy >> saveGist_ ak g' >>= handleResult reset uiToggleU outpU t >> busyU Idle
+      (Unlocked ak, _)    -> saveGist_ busyU ak g' >>= handleResult reset uiToggleU outpU t 
 
   pure (v', inpU, outpE)
 
@@ -83,14 +83,19 @@ editorComponent uiToggleU lockS = do
 
     handleResult :: (EditForm -> FRP ()) -> Sink ViewMode -> Sink (Either RootGist Gist) ->  CType 
                  -> Either DatasourceError Gist -> FRP ()
-    handleResult reset uiToggleU outpU t (Right g) = case t of
+    handleResult reset uiToggleU_ outpU t (Right g) = case t of
           None  -> print ("Wrong editor state None" :: JSString)
-          RootG -> reset emptyForm >> uiToggleU Site >> outpU (Left $ RootGist g)
-          JustG -> reset emptyForm >> uiToggleU Site >> outpU (Right g)
+          RootG -> reset emptyForm >> uiToggleU_ Site >> outpU (Left $ RootGist g)
+          JustG -> reset emptyForm >> uiToggleU_ Site >> outpU (Right g)
     handleResult _ _ _ _ (Left x) = print $ "Error saving gist: " <> showJS x
 
-    saveGist_ :: AuthKey -> Gist -> IO (Either DatasourceError Gist)
-    saveGist_ ak g = patchAPI api (getGistId $ Types.id g) g
+    saveGist_ :: Sink Busy -> AuthKey -> Gist -> IO (Either DatasourceError Gist)
+    saveGist_ busyU ak g = do
+      busyU Busy 
+      r <- patchAPI api (getGistId $ Types.id g) g
+      busyU Idle
+      pure r
+
       where
         unm  = username ak
         psw  = password ak
