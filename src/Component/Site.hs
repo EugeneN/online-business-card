@@ -93,9 +93,9 @@ siteComponent c = do
 
     loadMenu :: GistId -> Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> FRP ()
     loadMenu rg rootU stateU viewU  = 
-      loadGist_ viewU rg $ \rootGist -> do
-        rootU $ Just $ RootGist rootGist
-        case unfiles $ files rootGist of
+      loadGist_ viewU rg $ \rootGist_ -> do
+        rootU $ Just $ RootGist rootGist_
+        case unfiles $ files rootGist_ of
           []    -> viewU $ GistError $ DatasourceError "There are no files in this forest"
           (f:_) -> let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
                    in case forest of
@@ -196,6 +196,7 @@ siteComponent c = do
     renderPath ps = "#" <> JSS.intercalate "/" ps
 
     gistH :: [File] -> Html
+    gistH []    = H.div [] []
     gistH as = H.div [] (join $ fmap renderFileH as)
               
     renderFileH :: File -> [Html]

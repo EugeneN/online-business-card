@@ -80,11 +80,13 @@ validTags = [ "address" , "article" , "body" , "footer" , "header" , "h1" , "h2"
             , "col" , "colgroup" , "table" , "tbody" , "td" , "tfoot" , "th" , "thead"
             , "tr" , "datalist" , "fieldset"
             , "label" , "legend" , "meter" , "optgroup" , "option"
-            , "details" , "summary", "blockquote", "embed", "iframe"]
+            , "details" , "summary", "blockquote", "embed", "iframe"
+            , "style", "button", "script", "input"]
 
 validAttrs :: [Attr]
 validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" 
-             , "target" , "width" , "height" , "min" , "max", "pluginspage"]
+             , "target" , "width" , "height" , "min" , "max", "pluginspage"
+             , "data-subscribe", "data-extend", "type", "colspan"]
 
 isValidTag :: Tag -> Bool
 isValidTag = (`elem` validTags)
@@ -111,9 +113,20 @@ htmlStringToVirtualDom s = fmap go htmlAST
   where
     htmlAST = XMLI.parseXML $ JSS.unpack s
 
+    scriptContent :: [XMLT.Content] -> JSString
+    scriptContent xs = JSS.unlines $ fmap c2s xs
+
+    c2s :: XMLT.Content -> JSString
+    c2s (XMLT.Elem z)                  = showJS z
+    c2s (XMLT.Text (XMLT.CData _ z _)) = JSS.pack z
+    c2s (XMLT.CRef _)                  = ""
+
     go (XMLT.Text (XMLT.CData _ x _))                                   = H.text $ JSS.pack x
     go (XMLT.Elem (XMLT.Element (XMLT.QName tag _ _) attrs children _)) = if isValidTag (JSS.pack tag)
-                                                                            then VirtualDom.node (JSS.pack tag) (fmap goAttrs attrs) (fmap go children)
+                                                                            then if (JSS.pack tag) == "script"
+                                                                                --  then VirtualDom.node (JSS.pack tag) (fmap goAttrs attrs) [H.text $ scriptContent children]
+                                                                                 then VirtualDom.node "script" (fmap goAttrs attrs) [H.text $ scriptContent children]
+                                                                                 else VirtualDom.node (JSS.pack tag) (fmap goAttrs attrs) (fmap go children)
                                                                             else H.text $ "<Invalid tag: " <> JSS.pack tag <> ">"
     go (XMLT.CRef _)                                                    = H.text " " -- $ JSS.pack x
 
