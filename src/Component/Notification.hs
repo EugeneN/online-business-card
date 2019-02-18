@@ -48,7 +48,7 @@ nsuccess = Notification "white" "green"
 welcome :: JSString -> Notification
 welcome = Notification "white" "pink"
 
-notificationsComponent :: [Notification] -> IO (Signal Html, Sink (Maybe Notification))
+notificationsComponent :: [Notification] -> FRP (Signal Html, Sink (Maybe Notification))
 notificationsComponent initialErrorMessages = do
   (internalSink, internalEvents) <- newSyncEventOf (undefined :: Int)
   (externalSink, externalEvents) <- newSyncEventOf (undefined :: Maybe Notification)
