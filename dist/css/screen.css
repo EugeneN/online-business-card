@@ -748,6 +748,7 @@ ul.img-list {
   right            : 40px;
   width            : 300px;
   background-color : transparent;
+  z-index          : 2000;
 }
 
 .notifications-panel .a-notification {
