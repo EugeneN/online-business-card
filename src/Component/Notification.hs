@@ -73,7 +73,7 @@ notificationsComponent initialErrorMessages = do
 
     notificationW :: Widget [Notification] Int
     notificationW _    [] = H.div [A.class_ "notifications-panel empty"] []
-    notificationW sink ns = H.div [A.class_ "notifications-panel"]       [ H.div [] (map (notifItem sink) (zip [0..] ns))]
+    notificationW sink ns = H.div [A.class_ "notifications-panel"]       [ H.div [] (fmap (notifItem sink) (zip [0..] ns))]
     
     notifItem sink (idx, Notification fg bg msg) = 
       H.div [ A.class_ $ "a-notification", A.style $ "color:" <> fg <> ";background-color:"<>bg<>";"]
