@@ -32,9 +32,9 @@ import           Net
 import           Types
 
 
-data ViewState = GistPending (Maybe Path) | GistError DatasourceError | GistReady Gist 
+data ViewState = GistPending (Maybe Path) | GistError DatasourceError | GistReady Gist | AMessage JSS.JSString
 
-data Cmd = CLock | CUnlock | CEdit (Either RootGist Gist) deriving (Show)
+data Cmd = CLock | CUnlock | CEdit EditCmd 
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
@@ -44,7 +44,7 @@ siteComponent c = do
   (lockU, lockS)         <- newSignal Locked
   (uiToggleU, uiToggleS) <- newSignal Site
   (lv, le)               <- loginComponent nU uiToggleU :: FRP (Signal Html, Events AuthKey)
-  (ev, edU, ee)          <- editorComponent nU uiToggleU lockS :: FRP (Signal Html, Sink (Either RootGist Gist), Events (Either RootGist Gist))
+  (ev, edU, ee)          <- editorComponent nU uiToggleU lockS :: FRP (Signal Html, Sink EditCmd, Events EditResult)
   (viewU, viewModel)     <- newSignal (GistPending Nothing)
   (stateU, stateModel)   <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
   (cmdU, cmdE)           <- newEvent :: FRP (Sink Cmd, Events Cmd)
@@ -71,11 +71,12 @@ siteComponent c = do
       Login  -> H.div [] [nv, wrapper' lv]
       Editor -> H.div [] [nv, overlayWrapper ev]
 
-    handleEdits :: Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> Either RootGist Gist -> FRP ()
-    handleEdits rootU stateU viewU (Left rg) = loadMenu (Types.id . digout $ rg) rootU stateU viewU 
-    handleEdits _     _      viewU (Right g) = loadGist_ viewU (Types.id g) $ viewU . GistReady  -- really, navTo gist url?
+    handleEdits :: Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> EditResult -> FRP ()
+    handleEdits rootU stateU viewU (RRootGist rg) = loadMenu (Types.id . digout $ rg) rootU stateU viewU 
+    handleEdits _     _      viewU (RGist g)      = loadGist_ viewU (Types.id g) $ viewU . GistReady  -- really, navTo gist url?
+    handleEdits _     _      viewU (RNew g)       = viewU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
 
-    controller :: Sink ViewMode -> Sink Lock -> Sink (Either RootGist Gist) -> Cmd -> FRP ()
+    controller :: Sink ViewMode -> Sink Lock -> Sink EditCmd -> Cmd -> FRP ()
     controller uiToggleU lockU edU cmd = 
       case cmd of
         CLock           -> uiToggleU Site >> lockU Locked
@@ -126,34 +127,36 @@ siteComponent c = do
     view :: Sink Cmd -> ViewState -> Model -> Html
     view cmdU (GistPending p) m = 
       let ps = fromMaybe "" $ renderPath <$> p
-      in wrapper cmdU [] m $ H.div [A.class_ "loader-container"] 
+      in wrapper cmdU [] [] m $ H.div [A.class_ "loader-container"] 
                                    [ H.div [] [H.text $ "Loading " <> ps]
                                    , H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] [] ]
 
     view cmdU (GistError (DatasourceError s)) m = 
-      wrapper cmdU [] m $ H.div [A.class_ "s500"] 
+      wrapper cmdU [] [] m $ H.div [A.class_ "s500"] 
                         [ -- H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
                           H.span [A.class_ "error-message"] [H.text s ]
                         -- , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
                         ]
                    
     view cmdU (GistError (NotFound ps)) m = 
-      wrapper cmdU [] m $ H.div [A.class_ "s404"] 
+      wrapper cmdU [] [] m $ H.div [A.class_ "s404"] 
                     [ H.text "The path "
                     , H.span [A.class_ "path"] [H.text $ renderPath ps ]
                     , H.text " was not found in this forest."
                     ]
     
-    view cmdU (GistReady g) m@(_, _, k, _) = 
-      wrapper cmdU (editButton cmdU (Right g) k) m (gistH $ unfiles $ files g)
+    view cmdU (AMessage msg) m = 
+      wrapper cmdU [] [] m $ H.div [] [ H.text msg ]
     
-    wrapper :: Sink Cmd -> [Html] -> Model -> Html -> Html
-    wrapper cmdU editH (f, p, k, r) b = 
+    view cmdU (GistReady g) m@(_, _, k, _) = 
+      wrapper cmdU (editButton cmdU (Right g) k) (createButton cmdU k) m (gistH $ unfiles $ files g)
+    
+    wrapper :: Sink Cmd -> [Html] -> [Html] -> Model -> Html -> Html
+    wrapper cmdU editH createH (f, p, k, r) b = 
       let menu = extractMenu f p []
       in H.div [A.class_ "content"]
                [ H.div [A.class_ "lock"] [renderLock cmdU k]
-               , H.div [A.class_ "section"] $ [ renderMenu cmdU k r menu ] <> editH <> [b]]
-
+               , H.div [A.class_ "section"] $ [ renderMenu cmdU k r menu ] <> editH <> createH <> [b]]
 
     wrapper' :: Html -> Html
     wrapper' b = 
@@ -161,10 +164,14 @@ siteComponent c = do
             [H.div [A.class_ "section"] [ b ]]
 
     editButton :: Sink Cmd -> Either (Maybe RootGist) Gist -> Lock -> [Html]
-    editButton cmdU (Right g)       (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit $ Right g] [H.text "Edit"]]
-    editButton cmdU (Left (Just g)) (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit $ Left g]  [H.text "Edit"]]
+    editButton cmdU (Right g)       (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit $ EGist g]     [H.text "Edit"]]
+    editButton cmdU (Left (Just g)) (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit $ ERootGist g] [H.text "Edit"]]
     editButton _    (Left Nothing)  _            = [H.text "No root gist o_O"]
     editButton _    _               Locked       = []
+    
+    createButton :: Sink Cmd -> Lock -> [Html]
+    createButton cmdU (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit ECreate] [H.text "Create new"]]
+    createButton _    _            = []
     
     overlayWrapper :: Html -> Html
     overlayWrapper b = 

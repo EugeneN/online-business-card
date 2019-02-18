@@ -8,6 +8,7 @@ module Net
     ( loadGist
     , getAPI
     , patchAPI
+    , postAPI
     , saveGist
     ) where
 
@@ -28,10 +29,10 @@ import           Types
 
 
 loadGist :: FromJSON a => GistId -> IO (Either DatasourceError a)
-loadGist x = getAPI gistApi (getGistId x)
+loadGist x = getAPI gistApi ("/" <> getGistId x)
 
 saveGist :: (FromJSON b) => Gist -> IO (Either DatasourceError b)
-saveGist x = patchAPI gistApi (getGistId $ Types.id x) x
+saveGist x = patchAPI gistApi ("/" <> getGistId (Types.id x)) x
 
 mkAPIpath :: API -> Url -> IO Url
 mkAPIpath api pathSuffix = do
@@ -90,6 +91,28 @@ patchAPI api pathSuffix value = do
         Right x  -> pure $ Right x
   where
     request requestURI body = Request { reqMethod          = PATCH
+                                      , reqURI             = requestURI
+                                      , reqLogin           = Nothing
+                                      , reqHeaders         = headers api
+                                      , reqWithCredentials = xhrWithCredentials
+                                      , reqData            = StringData body
+                                      }                                 
+
+postAPI :: (ToJSON a, FromJSON b, Monad m, MonadIO m) 
+         => API -> JSString -> a -> m (Either DatasourceError b)
+postAPI api pathSuffix value = do
+  requestURI   <- liftIO $ mkAPIpath api pathSuffix
+  body         <- liftIO $ encodeJSString value
+  eitherResult <- liftIO (try $ xhrByteString (request requestURI body) :: IO (Either XHRError (Response ByteString)))
+  case eitherResult of
+    Left s       -> pure . Left . DatasourceError . xhrerrorToJss $ s
+    Right result -> case contents result of
+      Nothing          -> pure . Left $ DatasourceError "postAPI: No response"
+      Just byteString  -> case Data.Aeson.eitherDecodeStrict' byteString of
+        Left err -> pure . Left . DatasourceError $ "postAPI: Parse error " <> JSS.pack err <> " in " <> bsToJss byteString
+        Right x  -> pure $ Right x
+  where
+    request requestURI body = Request { reqMethod          = POST
                                       , reqURI             = requestURI
                                       , reqLogin           = Nothing
                                       , reqHeaders         = headers api

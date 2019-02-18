@@ -140,6 +140,7 @@ data Gist =
     , id          :: GistId
     , description :: JSString
     , files       :: Files 
+    , public      :: Bool
     } deriving (GHC.Generic, FromJSON, ToJSON, Show)
 
 type ApiResult = Either Message Gist
@@ -167,7 +168,7 @@ data API =
     }
 
 gistApi :: API
-gistApi = API "https://api.github.com/gists/" []
+gistApi = API "https://api.github.com/gists" []
 
 userApi :: API
 userApi = API "https://api.github.com/user" []
