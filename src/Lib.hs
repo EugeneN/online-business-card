@@ -159,6 +159,6 @@ writeConfig c = print $ encode c
 
 isLocalhost :: IO Bool
 isLocalhost = do
-  loc <- WL.getWindowLocation
+  loc  <- WL.getWindowLocation
   host <- WL.getHostname loc
   pure $ host == "localhost" || host == "127.0.0.1" || host == ""  -- XXX consider CIDR 127.
