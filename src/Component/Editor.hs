@@ -25,6 +25,7 @@ import           Lib
 import           Net
 import           Types
 import           UICombinators
+import           Component.Notification         (Notification, nerr)
 
 
 type EditForm = (Gist, File, JSString)
@@ -36,8 +37,8 @@ data Busy = Busy | Idle
 emptyForm :: EditForm
 emptyForm = (Gist Nothing Nothing (GistId "") "" (Files []), File "" "" "" 0 Plaintext, "")
 
-editorComponent :: Sink ViewMode -> Signal Lock -> FRP (Signal Html, Sink (Either RootGist Gist), Events (Either RootGist Gist))
-editorComponent uiToggleU lockS = do
+editorComponent :: Sink (Maybe Notification) -> Sink ViewMode -> Signal Lock -> FRP (Signal Html, Sink (Either RootGist Gist), Events (Either RootGist Gist))
+editorComponent nU uiToggleU lockS = do
   (inpU, inpE)   <- newEvent :: FRP (Sink (Either RootGist Gist), Events (Either RootGist Gist))
   (tU, tS)       <- newSignal None
   (busyU, busyS) <- newSignal Idle
@@ -52,7 +53,7 @@ editorComponent uiToggleU lockS = do
             Right y -> tU JustG >> pure y
     
     case listToMaybe . unfiles . files $ g of
-      Nothing -> print ("Bad gist" :: JSString) 
+      Nothing -> error_ ("Bad gist" :: JSString) 
       Just f' -> reset (g, f', f_content f') >> uiToggleU Editor
 
   void $ subscribeEvent e $ \(g, f, c) -> void . forkIO $ do
@@ -66,13 +67,16 @@ editorComponent uiToggleU lockS = do
         g' = g{files = Files [f']}
     
     case (a, t) of
-      (Locked, _)         -> print ("Not logged in" :: JSString) >> pure ()
-      (Unlocked _,  None) -> print ("Wrong editor state None" :: JSString)
+      (Locked, _)         -> error_ ("Not logged in" :: JSString) >> pure ()
+      (Unlocked _,  None) -> error_ ("Wrong editor state None" :: JSString)
       (Unlocked ak, _)    -> saveGist_ busyU ak g' >>= handleResult reset uiToggleU outpU t 
 
   pure (v', inpU, outpE)
 
   where
+    error_ :: JSString -> FRP ()
+    error_ = nU . Just . nerr
+
     layout :: Html -> Html -> Html
     layout v bv = H.div [] [bv, v]
 
@@ -84,10 +88,10 @@ editorComponent uiToggleU lockS = do
     handleResult :: (EditForm -> FRP ()) -> Sink ViewMode -> Sink (Either RootGist Gist) ->  CType 
                  -> Either DatasourceError Gist -> FRP ()
     handleResult reset uiToggleU_ outpU t (Right g) = case t of
-          None  -> print ("Wrong editor state None" :: JSString)
+          None  -> error_ ("Wrong editor state None" :: JSString)
           RootG -> reset emptyForm >> uiToggleU_ Site >> outpU (Left $ RootGist g)
           JustG -> reset emptyForm >> uiToggleU_ Site >> outpU (Right g)
-    handleResult _ _ _ _ (Left x) = print $ "Error saving gist: " <> showJS x
+    handleResult _ _ _ _ (Left x) = error_ $ "Error saving gist: " <> showJS x
 
     saveGist_ :: Sink Busy -> AuthKey -> Gist -> IO (Either DatasourceError Gist)
     saveGist_ busyU ak g = do

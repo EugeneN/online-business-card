@@ -25,6 +25,7 @@ library
                      , Component.Site
                      , Component.Login
                      , Component.Editor
+                     , Component.Notification
   build-depends:       base
                      , lubeck-web
                      , lubeck-frp

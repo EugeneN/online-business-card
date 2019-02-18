@@ -6,7 +6,6 @@ module Component.Site
     ( siteComponent
     ) where
 
-import           GHCJS.Types                    (JSString)
 import           Data.Aeson
 import qualified Data.ByteString.Char8          as BS
 import qualified Data.JSString                  as JSS      
@@ -27,6 +26,7 @@ import           Component.Nav
 import           Component.Title
 import           Component.Login
 import           Component.Editor
+import           Component.Notification
 import           Lib
 import           Net
 import           Types
@@ -40,10 +40,11 @@ siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
   (rootU, rootS)         <- newSignal Nothing
   navS                   <- navComponent 
+  (nv, nU)               <- notificationsComponent []
   (lockU, lockS)         <- newSignal Locked
   (uiToggleU, uiToggleS) <- newSignal Site
-  (lv, le)               <- loginComponent uiToggleU :: FRP (Signal Html, Events AuthKey)
-  (ev, edU, ee)          <- editorComponent uiToggleU lockS :: FRP (Signal Html, Sink (Either RootGist Gist), Events (Either RootGist Gist))
+  (lv, le)               <- loginComponent nU uiToggleU :: FRP (Signal Html, Events AuthKey)
+  (ev, edU, ee)          <- editorComponent nU uiToggleU lockS :: FRP (Signal Html, Sink (Either RootGist Gist), Events (Either RootGist Gist))
   (viewU, viewModel)     <- newSignal (GistPending Nothing)
   (stateU, stateModel)   <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
   (cmdU, cmdE)           <- newEvent :: FRP (Sink Cmd, Events Cmd)
@@ -51,7 +52,7 @@ siteComponent c = do
   let model_ = (,) <$> stateModel <*> navS :: Signal Model_                                                 
   let model  = (,,,) <$> stateModel <*> navS <*> lockS <*> rootS :: Signal Model                                                 
   let v      = view cmdU <$> viewModel <*> model
-  let v'     = layout <$> uiToggleS <*> v <*> lv <*> ev
+  let v'     = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv
   
   void $ titleComponent model
   void $ subscribeEvent (updates model_) $ handleModel viewU
@@ -64,11 +65,11 @@ siteComponent c = do
   pure v'
 
   where 
-    layout :: ViewMode -> Html -> Html -> Html -> Html
-    layout s sv lv ev = case s of
-      Site   -> H.div [] [sv]
-      Login  -> H.div [] [wrapper' lv]
-      Editor -> H.div [] [overlayWrapper ev]
+    layout :: ViewMode -> Html -> Html -> Html -> Html -> Html
+    layout s sv lv ev nv = case s of
+      Site   -> H.div [] [nv, sv]
+      Login  -> H.div [] [nv, wrapper' lv]
+      Editor -> H.div [] [nv, overlayWrapper ev]
 
     handleEdits :: Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> Either RootGist Gist -> FRP ()
     handleEdits rootU stateU viewU (Left rg) = loadMenu (Types.id . digout $ rg) rootU stateU viewU 
@@ -191,9 +192,6 @@ siteComponent c = do
     renderLock :: Sink Cmd -> Lock -> Html
     renderLock cmdU Locked       = H.button [A.class_ "locked",   E.click $ const $ cmdU CUnlock] [ H.img [A.src "https://image.flaticon.com/icons/svg/121/121685.svg"] [] ]
     renderLock cmdU (Unlocked _) = H.button [A.class_ "unlocked", E.click $ const $ cmdU CLock]   [ H.img [A.src "https://image.flaticon.com/icons/svg/121/121684.svg"] [] ]
-
-    renderPath :: Path -> JSString
-    renderPath ps = "#" <> JSS.intercalate "/" ps
 
     gistH :: [File] -> Html
     gistH []    = H.div [] []

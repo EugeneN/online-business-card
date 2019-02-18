@@ -22,6 +22,7 @@ import           Lib
 import           Net
 import           Types
 import           UICombinators
+import           Component.Notification         (Notification, nerr, nsuccess)
 
 
 data LoginForm = 
@@ -34,20 +35,24 @@ data FormValid = FormValid AuthKey | FormNotValid DatasourceError
 emptyForm :: LoginForm
 emptyForm = LoginForm "" ""
 
-loginComponent :: Sink ViewMode -> FRP (Signal Html, Events AuthKey)
-loginComponent uiToggleU = do
+loginComponent :: Sink (Maybe Notification) -> Sink ViewMode -> FRP (Signal Html, Events AuthKey)
+loginComponent nU uiToggleU = do
   (u, xe) <- newEvent
   (v, e, reset) <- formC emptyForm (w uiToggleU)
 
   void $ subscribeEvent e $ \lp -> void . forkIO $ do
     ok <- validate lp
     case ok of
-      FormValid usr  -> reset >> u usr
-      FormNotValid x -> print x
+      FormValid usr  -> reset >> nU (Just $ nsuccess "Welcome") >> u usr
+      FormNotValid x -> nU . Just . nerr . toString $ x
 
   pure (v, xe)
 
   where
+    toString :: DatasourceError -> JSString
+    toString (DatasourceError s) = "DatasourceError: " <> s 
+    toString (NotFound p)        = "Path not found: " <> renderPath p
+
     validate :: LoginForm -> IO FormValid
     validate (LoginForm u p) = do
       r <- authenticateOrError (u, p)
@@ -57,8 +62,7 @@ loginComponent uiToggleU = do
     
     authenticateOrError :: (JSString, JSString) -> IO (Either DatasourceError GithubUser)
     authenticateOrError (unm, psw) = do
-      res <- getAPI api "" :: IO (Either DatasourceError GithubUser)
-      pure res
+      getAPI api "" :: IO (Either DatasourceError GithubUser)
 
       where
         api  = userApi { headers = [auth, ct] }

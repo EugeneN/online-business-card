@@ -16,14 +16,14 @@ import           GHCJS.Marshal                 (toJSVal_aeson)
 import           JavaScript.Web.XMLHttpRequest
 import           Data.Aeson
 import           Data.ByteString
-import qualified Data.JSString
+import qualified Data.ByteString.Char8          as C8
+import qualified Data.JSString                  as JSS   
 import           Data.Monoid                   ((<>))
 import           Data.String                   (fromString)
 import           Control.Exception
 import           Control.Monad.Except
 import           System.Random
 
-import           Lubeck.Util                    (showJS)
 import           Types
 
 
@@ -41,12 +41,18 @@ mkAPIpath api pathSuffix = do
 
   where
     canonicalUrl = baseURL api <> pathSuffix
-    querySep     = case Data.JSString.findIndex (== '?') canonicalUrl of
+    querySep     = case JSS.findIndex (== '?') canonicalUrl of
                      Nothing -> "?"
                      _       -> "&"
 
 xhrWithCredentials :: Bool                     
 xhrWithCredentials = False
+
+bsToJss :: ByteString -> JSString
+bsToJss = JSS.pack . C8.unpack
+
+xhrerrorToJss :: XHRError -> JSString
+xhrerrorToJss = JSS.pack . show
 
 getAPI :: (FromJSON a, Monad m, MonadIO m) 
        => API -> JSString -> m (Either DatasourceError a)
@@ -54,11 +60,11 @@ getAPI api pathSuffix = do
   requestURI   <- liftIO $ mkAPIpath api pathSuffix
   eitherResult <- liftIO (try $ xhrByteString (request requestURI) :: IO (Either XHRError (Response ByteString)))
   case eitherResult of
-    Left s       -> pure . Left . DatasourceError . showJS $ s
+    Left s       -> pure . Left . DatasourceError . xhrerrorToJss $ s
     Right result -> case contents result of
       Nothing          -> pure . Left $ DatasourceError "getAPI: No response"
       Just byteString  -> case Data.Aeson.eitherDecodeStrict' byteString of
-        Left err -> pure . Left . DatasourceError $ "getAPI: Parse error " <> showJS err <> " in " <> showJS byteString
+        Left err -> pure . Left . DatasourceError $ "getAPI: Parse error " <> JSS.pack err <> " in " <> bsToJss byteString
         Right x  -> pure $ Right x
   where
     request requestURI = Request { reqMethod          = GET
@@ -76,11 +82,11 @@ patchAPI api pathSuffix value = do
   body         <- liftIO $ encodeJSString value
   eitherResult <- liftIO (try $ xhrByteString (request requestURI body) :: IO (Either XHRError (Response ByteString)))
   case eitherResult of
-    Left s       -> pure . Left . DatasourceError $ showJS s
+    Left s       -> pure . Left . DatasourceError . xhrerrorToJss $ s
     Right result -> case contents result of
       Nothing          -> pure . Left $ DatasourceError "patchAPI: No response"
       Just byteString  -> case Data.Aeson.eitherDecodeStrict' byteString of
-        Left err -> pure . Left . DatasourceError $ "patchAPI: Parse error " <> showJS err <> " in " <> showJS byteString
+        Left err -> pure . Left . DatasourceError $ "patchAPI: Parse error " <> JSS.pack err <> " in " <> bsToJss byteString
         Right x  -> pure $ Right x
   where
     request requestURI body = Request { reqMethod          = PATCH

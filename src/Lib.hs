@@ -11,6 +11,7 @@ module Lib
  , readConfig
  , writeConfig
  , pureMsg
+ , renderPath
  ) where
 
 import           Data.Aeson
@@ -39,6 +40,9 @@ import           Types
 
 pureMsg :: JSString -> Signal Html
 pureMsg x = pure $ H.div [A.class_ "pure-msg"] [H.text x] 
+
+renderPath :: Path -> JSString
+renderPath ps = "#" <> JSS.intercalate "/" ps
 
 newSignal :: a -> FRP (Sink a, Signal a)
 newSignal z = do
