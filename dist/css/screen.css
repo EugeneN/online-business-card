@@ -758,6 +758,7 @@ ul.img-list {
   border-radius : 5px;
   padding       : .5em 1em;
   position      : relative;
+  margin-bottom : 10px;
 }
 
 .a-notification .close {
