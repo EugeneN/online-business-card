@@ -36,6 +36,7 @@ type EditForm = (Gist, File, JSString)
 data CType = None | RootG | JustG | NewG
 
 data Busy = Busy | Idle
+data CloseState = Close | DontClose
 
 data EditCmd    = ERootGist RootGist | EGist Gist | ECreate
 data EditResult = RRootGist RootGist | RGist Gist | RNew Gist
@@ -51,16 +52,17 @@ emptyForm = (emptyGist, emptyFile, "")
 
 editorComponent :: Sink (Maybe Notification) -> Sink ViewMode -> Signal Lock -> FRP (Signal Html, Sink EditCmd, Events EditResult)
 editorComponent nU uiToggleU lockS = do
-  (inpU, inpE)   <- newSyncEventOf (undefined :: EditCmd)
-  (outpU, outpE) <- newSyncEventOf (undefined :: EditResult) 
-  (tU, tS)       <- newSignal None
-  (busyU, busyS) <- newSignal Idle
-  (v, e, reset)  <- formC emptyForm (w uiToggleU)
-  let busyV      = fmap busyW busyS
-  let v'         = layout <$> v <*> busyV
+  (inpU, inpE)     <- newSyncEventOf (undefined :: EditCmd)
+  (outpU, outpE)   <- newSyncEventOf (undefined :: EditResult) 
+  (tU, tS)         <- newSignal None
+  (busyU, busyS)   <- newSignal Idle
+  (closeU, closeS) <- newSignal Close
+  (v, e, reset)    <- formC emptyForm (w closeU uiToggleU)
+  let busyV        = fmap busyW busyS
+  let v'           = layout <$> v <*> busyV
 
   void $ subscribeEvent inpE $ handleInputCmd tU reset
-  void $ subscribeEvent e $ handleEditSubmit tS lockS reset busyU outpU
+  void $ subscribeEvent e $ handleEditSubmit closeS tS lockS reset busyU outpU
 
   pure (v', inpU, outpE)
 
@@ -76,10 +78,10 @@ editorComponent nU uiToggleU lockS = do
         Nothing -> error_ ("Bad gist" :: JSString) 
         Just f' -> reset (g, f', f_content f') >> uiToggleU Editor
   
-    handleEditSubmit :: Signal CType -> Signal Lock -> (EditForm -> FRP ()) 
+    handleEditSubmit :: Signal CloseState -> Signal CType -> Signal Lock -> (EditForm -> FRP ()) 
                      -> Sink Busy -> Sink EditResult -> (Gist, File, JSString) 
                      -> IO ()
-    handleEditSubmit tS lockS reset busyU outpU (g, f, c) = void . forkIO $ do
+    handleEditSubmit closeS tS lockS reset busyU outpU (g, f, c) = void . forkIO $ do
       a <- pollBehavior $ current lockS
       t <- pollBehavior $ current tS
   
@@ -97,8 +99,8 @@ editorComponent nU uiToggleU lockS = do
       case (a, t) of
         (Locked, _)         -> error_ ("Not logged in" :: JSString) >> pure ()
         (Unlocked _,  None) -> error_ ("Wrong editor state None" :: JSString)
-        (Unlocked ak, NewG) -> createGist_ busyU ak g' >>= handleResult reset uiToggleU outpU t 
-        (Unlocked ak, _)    -> saveGist_ busyU ak g'   >>= handleResult reset uiToggleU outpU t 
+        (Unlocked ak, NewG) -> createGist_ busyU ak g' >>= handleResult closeS reset uiToggleU outpU t 
+        (Unlocked ak, _)    -> saveGist_ busyU ak g'   >>= handleResult closeS reset uiToggleU outpU t 
 
     error_ :: JSString -> FRP ()
     error_ = nU . Just . nerr
@@ -111,14 +113,20 @@ editorComponent nU uiToggleU lockS = do
     busyW Busy = H.div [A.class_ "loader-container-editor"] 
                        [ H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] [] ]
 
-    handleResult :: (EditForm -> FRP ()) -> Sink ViewMode -> Sink EditResult ->  CType 
+    handleResult :: Signal CloseState -> (EditForm -> FRP ()) -> Sink ViewMode -> Sink EditResult ->  CType 
                   -> Either DatasourceError Gist -> FRP ()
-    handleResult reset uiToggleU_ outpU t (Right g) = case t of
+    handleResult closeS reset uiToggleU_ outpU t (Right g) = case t of
           None  -> error_ ("Wrong editor state None" :: JSString)
-          RootG -> reset emptyForm >> uiToggleU_ Site >> outpU (RRootGist $ RootGist g)
-          JustG -> reset emptyForm >> uiToggleU_ Site >> outpU (RGist g)
-          NewG  -> reset emptyForm >> uiToggleU_ Site >> outpU (RNew g)
-    handleResult _ _ _ _ (Left x) = error_ $ "Error saving gist: " <> showJS x
+          RootG -> closeOrNot reset closeS uiToggleU_ >> outpU (RRootGist $ RootGist g)
+          JustG -> closeOrNot reset closeS uiToggleU_ >> outpU (RGist g)
+          NewG  -> closeOrNot reset closeS uiToggleU_ >> outpU (RNew g)
+    handleResult _ _ _ _ _ (Left x) = error_ $ "Error saving gist: " <> showJS x
+
+    closeOrNot reset closeS uiToggleU_ = do
+      x <- pollBehavior $ current closeS
+      case x of
+        Close     -> reset emptyForm >> uiToggleU_ Site
+        DontClose -> pure ()
     
     saveGist_ :: Sink Busy -> AuthKey -> Gist -> IO (Either DatasourceError Gist)
     saveGist_ busyU ak g = do
@@ -158,10 +166,11 @@ editorComponent nU uiToggleU lockS = do
       let reset = aSink . DontSubmit
       pure (htmlS, submits aEvent, reset)
 
-    w :: Sink ViewMode ->  Widget EditForm (Submit EditForm)
-    w loginToggleU_ u (g, f, c) =  
+    w :: Sink CloseState -> Sink ViewMode ->  Widget EditForm (Submit EditForm)
+    w closeU loginToggleU_ u (g, f, c) =  
       H.div [A.class_ "editor-form"] 
-            [ H.button [E.click $ \_ -> u $ Submit (g, f, c)] [H.text "Save"]
-            , H.button [E.click $ \_ -> u (DontSubmit emptyForm) >> loginToggleU_ Site] [H.text "Cancel"]
+            [ H.button [E.click $ \_ -> closeU DontClose >> u (Submit (g, f, c))] [H.text "Save"]
+            , H.button [E.click $ \_ -> closeU Close >> u (Submit (g, f, c))] [H.text "Save and close"]
+            , H.button [E.click $ \_ -> closeU Close >> u (DontSubmit emptyForm) >> loginToggleU_ Site] [H.text "Cancel"]
             , richEditorWidget True (contramapSink (\n -> DontSubmit (g, f, n)) u) c
             ]
