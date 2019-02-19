@@ -59,40 +59,47 @@ editorComponent nU uiToggleU lockS = do
   let busyV      = fmap busyW busyS
   let v'         = layout <$> v <*> busyV
 
-  void $ subscribeEvent inpE $ \xg -> do
-    g <- case xg of
-            ERootGist  x -> tU RootG >> pure (digout x)
-            EGist y      -> tU JustG >> pure y
-            ECreate      -> tU NewG  >> pure emptyGist
-    
-    case listToMaybe . unfiles . files $ g of
-      Nothing -> error_ ("Bad gist" :: JSString) 
-      Just f' -> reset (g, f', f_content f') >> uiToggleU Editor
-
-  void $ subscribeEvent e $ \(g, f, c) -> void . forkIO $ do
-    a <- pollBehavior $ current lockS
-    t <- pollBehavior $ current tS
-
-    now <- getCurrentTime
-
-    let c' = case t of
-                RootG -> JSS.dropEnd 4 . JSS.drop 3 $ c -- FIXME ckeditor keeps wrapping content into <p>..</p>
-                _     -> c
-        d  = case t of
-                NewG -> showJS now <> ".html"
-                _    -> description g
-        f' = f{f_content = c'}
-        g' = g{files = Files [f'], description = d}
-    
-    case (a, t) of
-      (Locked, _)         -> error_ ("Not logged in" :: JSString) >> pure ()
-      (Unlocked _,  None) -> error_ ("Wrong editor state None" :: JSString)
-      (Unlocked ak, NewG) -> createGist_ busyU ak g' >>= handleResult reset uiToggleU outpU t 
-      (Unlocked ak, _)    -> saveGist_ busyU ak g'   >>= handleResult reset uiToggleU outpU t 
+  void $ subscribeEvent inpE $ handleInputCmd tU reset
+  void $ subscribeEvent e $ handleEditSubmit tS lockS reset busyU outpU
 
   pure (v', inpU, outpE)
 
   where
+    handleInputCmd :: Sink CType -> (EditForm -> FRP ()) -> EditCmd -> FRP ()
+    handleInputCmd tU reset cmd = do
+      g <- case cmd of
+              ERootGist  x -> tU RootG >> pure (digout x)
+              EGist y      -> tU JustG >> pure y
+              ECreate      -> tU NewG  >> pure emptyGist
+      
+      case listToMaybe . unfiles . files $ g of
+        Nothing -> error_ ("Bad gist" :: JSString) 
+        Just f' -> reset (g, f', f_content f') >> uiToggleU Editor
+  
+    handleEditSubmit :: Signal CType -> Signal Lock -> (EditForm -> FRP ()) 
+                     -> Sink Busy -> Sink EditResult -> (Gist, File, JSString) 
+                     -> IO ()
+    handleEditSubmit tS lockS reset busyU outpU (g, f, c) = void . forkIO $ do
+      a <- pollBehavior $ current lockS
+      t <- pollBehavior $ current tS
+  
+      now <- getCurrentTime
+  
+      let c' = case t of
+                  RootG -> JSS.dropEnd 4 . JSS.drop 3 $ c -- FIXME ckeditor keeps wrapping content into <p>..</p>
+                  _     -> c
+          d  = case t of
+                  NewG -> showJS now <> ".html"
+                  _    -> description g
+          f' = f{f_content = c'}
+          g' = g{files = Files [f'], description = d}
+
+      case (a, t) of
+        (Locked, _)         -> error_ ("Not logged in" :: JSString) >> pure ()
+        (Unlocked _,  None) -> error_ ("Wrong editor state None" :: JSString)
+        (Unlocked ak, NewG) -> createGist_ busyU ak g' >>= handleResult reset uiToggleU outpU t 
+        (Unlocked ak, _)    -> saveGist_ busyU ak g'   >>= handleResult reset uiToggleU outpU t 
+
     error_ :: JSString -> FRP ()
     error_ = nU . Just . nerr
 
