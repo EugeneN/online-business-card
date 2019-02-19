@@ -29,9 +29,9 @@ dist: all
 	rm -rf $(expdir)
 	mkdir -p $(expdir)
 	cp -R ./res/  $(expdir)
-	cp $(distdir)out.js $(expdir)
-	cp $(distdir)rts.js $(expdir)
-	cp $(distdir)lib.js $(expdir)
-	cp $(distdir)runmain.js $(expdir)
+	uglifyjs $(distdir)out.js > $(expdir)out.js
+	uglifyjs $(distdir)rts.js > $(expdir)rts.js
+	uglifyjs $(distdir)lib.js > $(expdir)lib.js
+	uglifyjs $(distdir)runmain.js > $(expdir)runmain.js
 	# gzip -6 -f $(expdir)all.js
 	mv $(expdir)index-dist.html $(expdir)index.html 
