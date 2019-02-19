@@ -51,10 +51,10 @@ emptyForm = (emptyGist, emptyFile, "")
 
 editorComponent :: Sink (Maybe Notification) -> Sink ViewMode -> Signal Lock -> FRP (Signal Html, Sink EditCmd, Events EditResult)
 editorComponent nU uiToggleU lockS = do
-  (inpU, inpE)   <- newEvent :: FRP (Sink EditCmd, Events EditCmd)
+  (inpU, inpE)   <- newSyncEventOf (undefined :: EditCmd)
+  (outpU, outpE) <- newSyncEventOf (undefined :: EditResult) 
   (tU, tS)       <- newSignal None
   (busyU, busyS) <- newSignal Idle
-  (outpU, outpE) <- newSyncEventOf (undefined :: EditResult) 
   (v, e, reset)  <- formC emptyForm (w uiToggleU)
   let busyV      = fmap busyW busyS
   let v'         = layout <$> v <*> busyV
