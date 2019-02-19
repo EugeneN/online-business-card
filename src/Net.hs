@@ -26,10 +26,20 @@ import           Control.Monad.Except
 import           System.Random
 
 import           Types
+import           Lib
 
+useAuthForGetRequestsIfAvailable :: Bool
+useAuthForGetRequestsIfAvailable = False
 
-loadGist :: FromJSON a => GistId -> IO (Either DatasourceError a)
-loadGist x = getAPI gistApi ("/" <> getGistId x)
+loadGist :: FromJSON a => Lock -> GistId -> IO (Either DatasourceError a)
+loadGist Locked x        = getAPI gistApi ("/" <> getGistId x)
+loadGist (Unlocked ak) x = getAPI api ("/" <> getGistId x)
+  where
+    api  = if useAuthForGetRequestsIfAvailable then gistApi { headers = [auth] } else gistApi
+    auth = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
+    unm  = username ak
+    psw  = password ak
+    base64encode = btoa
 
 saveGist :: (FromJSON b) => Gist -> IO (Either DatasourceError b)
 saveGist x = patchAPI gistApi ("/" <> getGistId (Types.id x)) x

@@ -55,12 +55,12 @@ siteComponent c = do
   let v'     = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv
   
   void $ titleComponent model
-  void $ subscribeEvent (updates model_) $ handleModel viewU
+  void $ subscribeEvent (updates model_) $ handleModel lockS viewU
   void $ subscribeEvent cmdE $ controller uiToggleU lockU edU
   void $ subscribeEvent le $ \authkey -> uiToggleU Site >> lockU (Unlocked authkey)
-  void $ subscribeEvent ee $ handleEdits rootU stateU viewU
+  void $ subscribeEvent ee $ handleEdits lockS rootU stateU viewU
 
-  loadMenu (rootGist c) rootU stateU viewU 
+  loadMenu lockS (rootGist c) rootU stateU viewU 
 
   pure v'
 
@@ -71,10 +71,10 @@ siteComponent c = do
       Login  -> H.div [] [nv, wrapper' lv]
       Editor -> H.div [] [nv, overlayWrapper ev]
 
-    handleEdits :: Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> EditResult -> FRP ()
-    handleEdits rootU stateU viewU (RRootGist rg) = loadMenu (Types.id . digout $ rg) rootU stateU viewU 
-    handleEdits _     _      viewU (RGist g)      = loadGist_ viewU (Types.id g) $ viewU . GistReady  -- really, navTo gist url?
-    handleEdits _     _      viewU (RNew g)       = viewU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
+    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> EditResult -> FRP ()
+    handleEdits lockS rootU stateU viewU (RRootGist rg) = loadMenu lockS (Types.id . digout $ rg) rootU stateU viewU 
+    handleEdits lockS _     _      viewU (RGist g)      = loadGist_ lockS viewU (Types.id g) $ viewU . GistReady  -- really, navTo gist url?
+    handleEdits _     _     _      viewU (RNew g)       = viewU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
 
     controller :: Sink ViewMode -> Sink Lock -> Sink EditCmd -> Cmd -> FRP ()
     controller uiToggleU lockU edU cmd = 
@@ -83,19 +83,20 @@ siteComponent c = do
         CUnlock         -> uiToggleU Login
         CEdit g         -> edU g
 
-    handleModel :: Sink ViewState -> Model_ -> FRP ()
-    handleModel viewU (f, p) = 
+    handleModel :: Signal Lock -> Sink ViewState -> Model_ -> FRP ()
+    handleModel lockS viewU (f, p) = 
       case findTreeByPath f p of
         Nothing -> case (f, p) of
-          ([], [])           -> viewU (GistPending Nothing)
-          (_, "blog":bid:[]) -> loadGist_ viewU (GistId bid) $ viewU . GistReady
+          ([], [])           -> viewU $ GistPending Nothing
+          ([], "blog":_:[])  -> viewU $ GistPending Nothing
           ([], p')           -> viewU . GistPending . Just $ p'
+          (_, "blog":bid:[]) -> loadGist_ lockS viewU (GistId bid) $ viewU . GistReady
           (_,  p')           -> viewU . GistError . NotFound $ p'
-        Just page            -> loadGist_ viewU (dataSource page) $ viewU . GistReady
+        Just page            -> loadGist_ lockS viewU (dataSource page) $ viewU . GistReady
 
-    loadMenu :: GistId -> Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> FRP ()
-    loadMenu rg rootU stateU viewU  = 
-      loadGist_ viewU rg $ \rootGist_ -> do
+    loadMenu :: Signal Lock -> GistId -> Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> FRP ()
+    loadMenu lockS rg rootU stateU viewU  = 
+      loadGist_ lockS viewU rg $ \rootGist_ -> do
         rootU $ Just $ RootGist rootGist_
         case unfiles $ files rootGist_ of
           []    -> viewU $ GistError $ DatasourceError "There are no files in this forest"
@@ -114,10 +115,11 @@ siteComponent c = do
                                 []  -> Just $ DT.rootLabel x
                                 ys' -> findTreeByPath (DT.subForest x) ys'
 
-    loadGist_ :: Sink ViewState -> GistId -> (Gist -> IO ()) -> IO ()
-    loadGist_ viewU g f = void . forkIO $ do
+    loadGist_ :: Signal Lock -> Sink ViewState -> GistId -> (Gist -> IO ()) -> IO ()
+    loadGist_ lockS viewU g f = void . forkIO $ do
       viewU $ GistPending Nothing
-      a <- loadGist g :: IO (Either DatasourceError ApiResult)
+      k <- pollBehavior $ current lockS
+      a <- loadGist k g :: IO (Either DatasourceError ApiResult)
       case a of
         Left x   -> viewU $ GistError x
         Right a' -> case a' of
