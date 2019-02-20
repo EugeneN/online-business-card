@@ -60,9 +60,9 @@ siteComponent c = do
   let v'    = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv
   
   void $ titleComponent model
-  void $ subscribeEvent (updates blogM) $ handleBlogArticle lockS viewU
-  void $ subscribeEvent (updates pageM) $ handlePageArticle lockS viewU
-  void $ subscribeEvent cmdE $ controller uiToggleU lockU edU
+  void $ subscribeEvent (updates blogM) $ handleBlogPage lockS viewU
+  void $ subscribeEvent (updates pageM) $ handleTreePage lockS viewU
+  void $ subscribeEvent cmdE $ handleCmd uiToggleU lockU edU
   void $ subscribeEvent le $ \authkey -> uiToggleU Site >> lockU (Unlocked authkey)
   void $ subscribeEvent ee $ handleEdits lockS rootU stateU viewU
 
@@ -82,34 +82,34 @@ siteComponent c = do
                 -> Sink ViewState -> EditResult -> FRP ()
     handleEdits lockS rootU stateU viewU (RRootGist rg) = 
       loadMenu lockS (Types.id . digout $ rg) rootU stateU viewU 
-    handleEdits lockS _     _      viewU (RGist g)      = 
+    handleEdits lockS _ _ viewU (RGist g) = 
       loadGist_ lockS viewU (Types.id g) $ viewU . GistReady  -- really, navTo gist url?
-    handleEdits _     _     _      viewU (RNew g)       = 
+    handleEdits _ _ _ viewU (RNew g) = 
       viewU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
 
-    controller :: Sink ViewMode -> Sink Lock -> Sink EditCmd -> Cmd -> FRP ()
-    controller uiToggleU lockU edU cmd = 
+    handleCmd :: Sink ViewMode -> Sink Lock -> Sink EditCmd -> Cmd -> FRP ()
+    handleCmd uiToggleU lockU edU cmd = 
       case cmd of
-        CLock           -> uiToggleU Site >> lockU Locked
-        CUnlock         -> uiToggleU Login
-        CEdit g         -> edU g
+        CLock   -> uiToggleU Site >> lockU Locked
+        CUnlock -> uiToggleU Login
+        CEdit g -> edU g
 
-    handleBlogArticle :: Signal Lock -> Sink ViewState -> (Path, Maybe BlogIndex) -> FRP ()
-    handleBlogArticle lockS viewU (p, bi) = 
+    handleBlogPage :: Signal Lock -> Sink ViewState -> (Path, Maybe BlogIndex) -> FRP ()
+    handleBlogPage lockS viewU (p, bi) = 
       case (bi, p) of
         (Nothing,  "blog":[])     -> viewU . GistPending . Just $ p -- blog index
-        (Nothing,  "blog":_:[]) -> viewU . GistPending . Just $ p -- blog article
+        (Nothing,  "blog":_:[])   -> viewU . GistPending . Just $ p -- blog article
         (Just bi', "blog":[])     -> viewU $ Blog bi'
         (Just bi', "blog":bid:[]) -> loadBlog lockS viewU bi' bid
         _                         -> pure ()
 
-    handlePageArticle :: Signal Lock -> Sink ViewState -> Model_ -> FRP ()
-    handlePageArticle lockS viewU (f, p) = 
+    handleTreePage :: Signal Lock -> Sink ViewState -> Model_ -> FRP ()
+    handleTreePage lockS viewU (f, p) = 
       case (f, p) of
         ([], [])       -> viewU $ GistPending Nothing
         ([], p')       -> viewU . GistPending . Just $ p'
         (m:_, [])      -> loadGist_ lockS viewU (dataSource . DT.rootLabel $ m) $ viewU . GistReady -- home page
-        (_, "blog":_)  -> pure () -- blog is handled elsewhere
+        (_, "blog":_)  -> pure ()                                                                   -- blog is handled elsewhere
         (ms, ps)       -> case findTreeByPath ms ps of
                             Nothing   -> viewU . GistError . NotFound $ ps
                             Just page -> loadGist_ lockS viewU (dataSource page) $ viewU . GistReady
