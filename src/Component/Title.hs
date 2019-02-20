@@ -23,7 +23,7 @@ titleComponent s = do
   void $ subscribeEvent (updates s') setTitle
 
   where
-    extractMenu' (f, p, _, _, _) = extractMenu f p []
+    extractMenu' (f, p, _, _) = extractMenu f p []
 
     flattenMenu MenuNil          = []
     flattenMenu (Menu m MenuNil) = findSelectedItem m

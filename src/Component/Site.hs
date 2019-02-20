@@ -35,7 +35,7 @@ import           Types
 
 
 data ViewState = GistPending (Maybe Path) | GistError DatasourceError | GistReady Gist 
-               | Blog | AMessage JSS.JSString
+               | Blog BlogIndex | AMessage JSS.JSString
 
 data Cmd = CLock | CUnlock | CEdit EditCmd 
 
@@ -53,13 +53,15 @@ siteComponent c = do
   (stateU, stateModel)   <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
   (cmdU, cmdE)           <- newEvent :: FRP (Sink Cmd, Events Cmd)
 
-  let model_ = (,,) <$> stateModel <*> navS <*> blogS :: Signal Model_                                                 
-  let model  = (,,,,) <$> stateModel <*> navS <*> lockS <*> rootS <*> blogS :: Signal Model                                                 
-  let v      = view cmdU <$> viewModel <*> model
-  let v'     = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv
+  let blogM = (,) <$> navS <*> blogS :: Signal (Path, Maybe BlogIndex)
+  let pageM = (,) <$> stateModel <*> navS :: Signal Model_                                                 
+  let model = (,,,) <$> stateModel <*> navS <*> lockS <*> rootS :: Signal Model                                                 
+  let v     = view cmdU <$> viewModel <*> model
+  let v'    = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv
   
   void $ titleComponent model
-  void $ subscribeEvent (updates model_) $ handleModel lockS viewU
+  void $ subscribeEvent (updates blogM) $ handleBlogArticle lockS viewU
+  void $ subscribeEvent (updates pageM) $ handlePageArticle lockS viewU
   void $ subscribeEvent cmdE $ controller uiToggleU lockU edU
   void $ subscribeEvent le $ \authkey -> uiToggleU Site >> lockU (Unlocked authkey)
   void $ subscribeEvent ee $ handleEdits lockS rootU stateU viewU
@@ -92,19 +94,25 @@ siteComponent c = do
         CUnlock         -> uiToggleU Login
         CEdit g         -> edU g
 
-    handleModel :: Signal Lock -> Sink ViewState -> Model_ -> FRP ()
-    handleModel lockS viewU (f, p, bi) = 
-      case findTreeByPath f p of
-        Nothing -> case (bi, f, p) of
-          (_,        [], [])           -> viewU $ GistPending Nothing
-          (_,        [], p')           -> viewU . GistPending . Just $ p
-          (_,        _, "blog":[])     -> viewU . GistPending . Just $ p
-          (Nothing,  _, "blog":bid:[]) -> viewU . GistPending . Just $ p
-          (Just bi', _, "blog":bid:[]) -> loadBlog lockS viewU bi' bid
-          (_,        _,  p')           -> viewU . GistError . NotFound $ p'
-        Just page -> case p of
-                        "blog":[] -> viewU Blog
-                        _         -> loadGist_ lockS viewU (dataSource page) $ viewU . GistReady
+    handleBlogArticle :: Signal Lock -> Sink ViewState -> (Path, Maybe BlogIndex) -> FRP ()
+    handleBlogArticle lockS viewU (p, bi) = 
+      case (bi, p) of
+        (Nothing,  "blog":[])     -> viewU . GistPending . Just $ p -- blog index
+        (Nothing,  "blog":_:[]) -> viewU . GistPending . Just $ p -- blog article
+        (Just bi', "blog":[])     -> viewU $ Blog bi'
+        (Just bi', "blog":bid:[]) -> loadBlog lockS viewU bi' bid
+        _                         -> pure ()
+
+    handlePageArticle :: Signal Lock -> Sink ViewState -> Model_ -> FRP ()
+    handlePageArticle lockS viewU (f, p) = 
+      case (f, p) of
+        ([], [])       -> viewU $ GistPending Nothing
+        ([], p')       -> viewU . GistPending . Just $ p'
+        (m:_, [])      -> loadGist_ lockS viewU (dataSource . DT.rootLabel $ m) $ viewU . GistReady -- home page
+        (_, "blog":_)  -> pure () -- blog is handled elsewhere
+        (ms, ps)       -> case findTreeByPath ms ps of
+                            Nothing   -> viewU . GistError . NotFound $ ps
+                            Just page -> loadGist_ lockS viewU (dataSource page) $ viewU . GistReady
     
     loadBlog :: Signal Lock -> Sink ViewState -> BlogIndex -> Url -> FRP ()
     loadBlog lockS viewU (BlogIndex bi) s = do
@@ -181,19 +189,14 @@ siteComponent c = do
     view cmdU (AMessage msg) m = 
       wrapper cmdU [] [] m $ H.div [] [ H.text msg ]
     
-    view cmdU Blog m@(_, _, k, _, Nothing) = 
-      wrapper cmdU [] (createButton cmdU k) m $ H.div [A.class_ "loader-container"] 
-                                                      [ H.div [] [H.text "Loading "]
-                                                      , H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] [] ]
-
-    view cmdU Blog m@(_, _, k, _, Just bi) = 
+    view cmdU (Blog bi) m@(_, _, k, _) = 
       wrapper cmdU [] (createButton cmdU k) m (renderBlogIndex bi)
 
-    view cmdU (GistReady g) m@(_, _, k, _, _) = 
+    view cmdU (GistReady g) m@(_, _, k, _) = 
       wrapper cmdU (editButton cmdU (Right g) k) (createButton cmdU k) m (renderGistFiles $ unfiles $ files g)
     
     wrapper :: Sink Cmd -> [Html] -> [Html] -> Model -> Html -> Html
-    wrapper cmdU editH createH (f, p, k, r, _) b = 
+    wrapper cmdU editH createH (f, p, k, r) b = 
       let menu = extractMenu f p []
       in H.div [A.class_ "content"]
                [ H.div [A.class_ "lock"] [renderLock cmdU k]
