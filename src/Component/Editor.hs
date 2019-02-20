@@ -33,13 +33,13 @@ import           Component.Notification         (Notification, nerr)
 
 type EditForm = (Gist, File, JSString)
 
-data CType = None | RootG | JustG | NewG
+data CType = None | RootG | JustG | NewG | BlogG
 
 data Busy = Busy | Idle
 data CloseState = Close | DontClose
 
-data EditCmd    = ERootGist RootGist | EGist Gist | ECreate
-data EditResult = RRootGist RootGist | RGist Gist | RNew Gist
+data EditCmd    = ERootGist RootGist | EGist Gist | ECreate   | EBlogGist BlogGist
+data EditResult = RRootGist RootGist | RGist Gist | RNew Gist | RBlogGist BlogGist
 
 emptyFile :: File
 emptyFile = File "" "" "" 0 Plaintext
@@ -70,9 +70,10 @@ editorComponent nU uiToggleU lockS = do
     handleInputCmd :: Sink CType -> (EditForm -> FRP ()) -> EditCmd -> FRP ()
     handleInputCmd tU reset cmd = do
       g <- case cmd of
-              ERootGist  x -> tU RootG >> pure (digout x)
-              EGist y      -> tU JustG >> pure y
-              ECreate      -> tU NewG  >> pure emptyGist
+              EBlogGist x -> tU BlogG >> pure (blogout x)
+              ERootGist x -> tU RootG >> pure (digout x)
+              EGist y     -> tU JustG >> pure y
+              ECreate     -> tU NewG  >> pure emptyGist
       
       case listToMaybe . unfiles . files $ g of
         Nothing -> error_ ("Bad gist" :: JSString) 
@@ -89,6 +90,7 @@ editorComponent nU uiToggleU lockS = do
   
       let c' = case t of
                   RootG -> JSS.dropEnd 4 . JSS.drop 3 $ c -- FIXME ckeditor keeps wrapping content into <p>..</p>
+                  BlogG -> JSS.dropEnd 4 . JSS.drop 3 $ c -- FIXME ckeditor keeps wrapping content into <p>..</p>
                   _     -> c
           d  = case t of
                   NewG -> showJS now <> ".html"
@@ -118,6 +120,7 @@ editorComponent nU uiToggleU lockS = do
     handleResult closeS reset uiToggleU_ outpU t (Right g) = case t of
           None  -> error_ ("Wrong editor state None" :: JSString)
           RootG -> closeOrNot reset closeS uiToggleU_ >> outpU (RRootGist $ RootGist g)
+          BlogG -> closeOrNot reset closeS uiToggleU_ >> outpU (RBlogGist $ BlogGist g)
           JustG -> closeOrNot reset closeS uiToggleU_ >> outpU (RGist g)
           NewG  -> closeOrNot reset closeS uiToggleU_ >> outpU (RNew g)
     handleResult _ _ _ _ _ (Left x) = error_ $ "Error saving gist: " <> showJS x

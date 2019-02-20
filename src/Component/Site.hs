@@ -35,9 +35,11 @@ import           Types
 
 
 data ViewState = GistPending (Maybe Path) | GistError DatasourceError | GistReady Gist 
-               | Blog BlogIndex | AMessage JSS.JSString
+               | Blog BlogIndex BlogGist | AMessage JSS.JSString
 
 data Cmd = CLock | CUnlock | CEdit EditCmd 
+
+type BlogIndexFull = (BlogIndex, BlogGist)
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
@@ -45,7 +47,7 @@ siteComponent c = do
   navS                   <- navComponent 
   (nv, nU)               <- notificationsComponent []
   (lockU, lockS)         <- newSignal Locked
-  (blogU, blogS)         <- newSignal Nothing -- :: Maybe BlogIndex
+  (blogU, blogS)         <- newSignal Nothing :: FRP (Sink (Maybe BlogIndexFull), Signal (Maybe BlogIndexFull)) 
   (uiToggleU, uiToggleS) <- newSignal Site
   (lv, le)               <- loginComponent nU uiToggleU :: FRP (Signal Html, Events AuthKey)
   (ev, edU, ee)          <- editorComponent nU uiToggleU lockS :: FRP (Signal Html, Sink EditCmd, Events EditResult)
@@ -53,18 +55,18 @@ siteComponent c = do
   (stateU, stateModel)   <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
   (cmdU, cmdE)           <- newEvent :: FRP (Sink Cmd, Events Cmd)
 
-  let blogM = (,) <$> navS <*> blogS :: Signal (Path, Maybe BlogIndex)
+  let blogM = (,) <$> navS <*> blogS :: Signal (Path, Maybe BlogIndexFull)
   let pageM = (,) <$> stateModel <*> navS :: Signal Model_                                                 
   let model = (,,,) <$> stateModel <*> navS <*> lockS <*> rootS :: Signal Model                                                 
   let v     = view cmdU <$> viewModel <*> model
   let v'    = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv
   
   void $ titleComponent model
-  void $ subscribeEvent (updates blogM) $ handleBlogPage lockS viewU
-  void $ subscribeEvent (updates pageM) $ handleTreePage lockS viewU
-  void $ subscribeEvent cmdE $ handleCmd uiToggleU lockU edU
-  void $ subscribeEvent le $ \authkey -> uiToggleU Site >> lockU (Unlocked authkey)
-  void $ subscribeEvent ee $ handleEdits lockS rootU stateU viewU
+  void $ subscribeEvent (updates blogM) $ handleBlogPage lockS                    viewU
+  void $ subscribeEvent (updates pageM) $ handleTreePage lockS                    viewU
+  void $ subscribeEvent ee              $ handleEdits    lockS rootU blogU stateU viewU
+  void $ subscribeEvent cmdE            $ handleCmd      uiToggleU lockU edU
+  void $ subscribeEvent le              $ handleLogin    uiToggleU lockU
 
   void . forkIO $ loadMenu      lockS (rootGist c) rootU stateU viewU 
   void . forkIO $ loadBlogIndex lockS (blogGist c) blogU        viewU
@@ -78,14 +80,14 @@ siteComponent c = do
       Login  -> H.div [] [nv, wrapper' lv]
       Editor -> H.div [] [nv, overlayWrapper ev]
 
-    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (DT.Forest Page) 
-                -> Sink ViewState -> EditResult -> FRP ()
-    handleEdits lockS rootU stateU viewU (RRootGist rg) = 
-      loadMenu lockS (Types.id . digout $ rg) rootU stateU viewU 
-    handleEdits lockS _ _ viewU (RGist g) = 
-      loadGist_ lockS viewU (Types.id g) $ viewU . GistReady  -- really, navTo gist url?
-    handleEdits _ _ _ viewU (RNew g) = 
-      viewU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
+    handleLogin :: Sink ViewMode -> Sink Lock -> AuthKey -> FRP ()
+    handleLogin uiToggleU lockU authkey = uiToggleU Site >> lockU (Unlocked authkey)
+
+    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (Maybe BlogIndexFull) -> Sink (DT.Forest Page) -> Sink ViewState -> EditResult -> FRP ()
+    handleEdits lockS rootU _     stateU viewU (RRootGist rg) = loadMenu      lockS (Types.id . digout $ rg)  rootU stateU viewU 
+    handleEdits lockS _     blogU _      viewU (RBlogGist bg) = loadBlogIndex lockS (Types.id . blogout $ bg) blogU        viewU 
+    handleEdits lockS _     _     _      viewU (RGist g)      = loadGist_ lockS viewU (Types.id g) $ viewU . GistReady                                -- really, navTo gist url?
+    handleEdits _     _     _     _      viewU (RNew g)       = viewU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
 
     handleCmd :: Sink ViewMode -> Sink Lock -> Sink EditCmd -> Cmd -> FRP ()
     handleCmd uiToggleU lockU edU cmd = 
@@ -94,14 +96,14 @@ siteComponent c = do
         CUnlock -> uiToggleU Login
         CEdit g -> edU g
 
-    handleBlogPage :: Signal Lock -> Sink ViewState -> (Path, Maybe BlogIndex) -> FRP ()
+    handleBlogPage :: Signal Lock -> Sink ViewState -> (Path, Maybe BlogIndexFull) -> FRP ()
     handleBlogPage lockS viewU (p, bi) = 
       case (bi, p) of
-        (Nothing,  "blog":[])     -> viewU . GistPending . Just $ p -- blog index
-        (Nothing,  "blog":_:[])   -> viewU . GistPending . Just $ p -- blog article
-        (Just bi', "blog":[])     -> viewU $ Blog bi'
-        (Just bi', "blog":bid:[]) -> loadBlog lockS viewU bi' bid
-        _                         -> pure ()
+        (Nothing,         "blog":[])     -> viewU . GistPending . Just $ p -- blog index
+        (Nothing,         "blog":_:[])   -> viewU . GistPending . Just $ p -- blog article
+        (Just (bi', big), "blog":[])     -> viewU $ Blog bi' big
+        (Just (bi', _),   "blog":bid:[]) -> loadBlog lockS viewU bi' bid
+        _                                -> pure ()
 
     handleTreePage :: Signal Lock -> Sink ViewState -> Model_ -> FRP ()
     handleTreePage lockS viewU (f, p) = 
@@ -122,7 +124,7 @@ siteComponent c = do
         Nothing -> viewU . GistError . NotFound $ [s]
         Just x  -> loadGist_ lockS viewU (GistId $ hash x) $ viewU . GistReady
     
-    loadBlogIndex :: Signal Lock -> GistId -> Sink (Maybe BlogIndex) -> Sink ViewState -> FRP ()
+    loadBlogIndex :: Signal Lock -> GistId -> Sink (Maybe BlogIndexFull) -> Sink ViewState -> FRP ()
     loadBlogIndex lockS bg blogU viewU  = 
       loadGist_ lockS viewU bg $ \blogGist_ -> 
         case unfiles $ files blogGist_ of
@@ -130,7 +132,7 @@ siteComponent c = do
           (f:_) -> let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String BlogIndex
                    in case forest of
                           Left err -> viewU $ GistError $ DatasourceError $ JSS.pack err
-                          Right bi' -> blogU $ Just bi'
+                          Right bi' -> blogU $ Just (bi', BlogGist blogGist_)
     
     loadMenu :: Signal Lock -> GistId -> Sink (Maybe RootGist) 
              -> Sink (DT.Forest Page) -> Sink ViewState -> FRP ()
@@ -189,8 +191,8 @@ siteComponent c = do
     view cmdU (AMessage msg) m = 
       wrapper cmdU [] [] m $ H.div [] [ H.text msg ]
     
-    view cmdU (Blog bi) m@(_, _, k, _) = 
-      wrapper cmdU [] (createButton cmdU k) m (renderBlogIndex bi)
+    view cmdU (Blog bi big) m@(_, _, k, _) = 
+      wrapper cmdU (editBlogButton cmdU big k) (createButton cmdU k) m (renderBlogIndex bi)
 
     view cmdU (GistReady g) m@(_, _, k, _) = 
       wrapper cmdU (editButton cmdU (Right g) k) (createButton cmdU k) m (renderGistFiles $ unfiles $ files g)
@@ -207,10 +209,14 @@ siteComponent c = do
       H.div [A.class_ "content"]
             [H.div [A.class_ "section"] [ b ]]
 
+    editBlogButton :: Sink Cmd -> BlogGist -> Lock -> [Html]
+    editBlogButton cmdU big (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit $ EBlogGist big] [H.text "Edit"]]
+    editBlogButton _    _   Locked       = []
+
     editButton :: Sink Cmd -> Either (Maybe RootGist) Gist -> Lock -> [Html]
     editButton cmdU (Right g)       (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit $ EGist g]     [H.text "Edit"]]
     editButton cmdU (Left (Just g)) (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit $ ERootGist g] [H.text "Edit"]]
-    editButton _    (Left Nothing)  _            = [H.text "No root gist o_O"]
+    editButton _    (Left Nothing)  _            = []
     editButton _    _               Locked       = []
     
     createButton :: Sink Cmd -> Lock -> [Html]
