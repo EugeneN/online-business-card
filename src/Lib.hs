@@ -12,6 +12,7 @@ module Lib
  , writeConfig
  , pureMsg
  , renderPath
+ , writeBlogIndex
  ) where
 
 import           Data.Aeson
@@ -155,7 +156,10 @@ readConfig = do
     Right c' -> Right c'
 
 writeConfig :: SiteConfig -> IO ()
-writeConfig c = print $ encode c
+writeConfig = print . encode
+
+writeBlogIndex :: BlogIndex -> IO ()
+writeBlogIndex = print . encode
 
 isLocalhost :: IO Bool
 isLocalhost = do

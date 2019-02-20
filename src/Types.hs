@@ -31,6 +31,20 @@ jss2text = T.pack . JSS.unpack
 text2jss :: T.Text -> JSString 
 text2jss = JSS.pack . T.unpack
 
+data BlogRecord = 
+  BlogRecord 
+    { day        :: Int
+    , month      :: Int
+    , year       :: Int
+    , humanTitle :: JSString
+    , hash       :: JSString
+    , slug       :: JSString
+    } deriving (GHC.Generic, ToJSON, FromJSON)
+
+newtype BlogIndex = 
+  BlogIndex { unblog :: [BlogRecord] }
+  deriving (GHC.Generic, ToJSON, FromJSON)
+
 data AuthKey = 
   AuthKey 
     { username :: JSString
@@ -46,7 +60,11 @@ newtype RootGist =
   RootGist { digout :: Gist }
   deriving (Show)
 
-type Model = (DT.Forest Page, Path, Lock, Maybe RootGist)
+newtype BlogGist = 
+  BlogGist { blogout :: Gist }
+  deriving (Show)
+
+type Model = (DT.Forest Page, Path, Lock, Maybe RootGist, Maybe BlogIndex)
 type Model_ = (DT.Forest Page, Path)
 
 instance FromJSON JSString where
@@ -57,8 +75,9 @@ instance ToJSON JSString where
 
 data SiteConfig = 
   SiteConfig 
-    { rootGist :: GistId }
-  deriving (GHC.Generic, ToJSON, FromJSON)
+    { rootGist :: GistId
+    , blogGist :: GistId 
+    } deriving (GHC.Generic, ToJSON, FromJSON)
 
 newtype GistId = 
   GistId 
@@ -248,3 +267,40 @@ instance FromJSON GithubUser where
 -- thesite = [aboutPage, photosPage, cvPage, blogPage, appsPage, talksPage]
 
 -- zip = Z.fromForest thesite 
+
+-- bi :: BlogIndex
+-- bi = 
+--   BlogIndex 
+--     [ BlogRecord 19 2  2019 "Mathematics"                                             "367afcbe6e16201c56c053e825392c87" "mathematics"
+--     , BlogRecord 18 2  2019 "meta.repl 2 - The revenge of WYSIWYG"                    "d78d9cd2ebd8c670606152762b623620" "meta.repl-2-the-revenge-of-wysiwyg"
+--     , BlogRecord 18 2  2019 "meta.repl 1"                                             "3ad14ea7bf1dce157a058dd82b7ff659" "meta.repl-1"
+--     , BlogRecord 14 2  2019 "IoT "                                                    "4af23c6300868d85edf79faf743032fe" "iot"
+--     , BlogRecord 14 2  2019 "Why “worse” things work "                                "8f92c0638d7084f23a6bfe6d18aeea2e" "why-worse-things-work"
+--     , BlogRecord 12 9  2018 "Me-oriented travel service "                             "103aaf342540f0562360fd2d33d8befe" "me-oriented-travel-service"
+--     , BlogRecord 31 12 2018 "Technology is a multiplier "                             "a47499bb7ada12c7879c435aa74e7293" "technology-is-a-multiplier"
+--     , BlogRecord 12 2  2017 "Why React is so popular "                                "f2ab0c730792262e9f820075c4ba4012" "why-react-is-so-popular"
+--     , BlogRecord 9 30  2017 "Project 8 "                                              "5b4e7d908cb94ecf301c6cf733c9d65f" "project-8"
+--     , BlogRecord 1 28  2017 "Multi-level programming language "                       "3cf4a90656fe6622631d19334f0f028a" "multi-level-programming-language"
+--     , BlogRecord 1 11  2017 "Many languages of UI "                                   "b5004d2f750b47682e5fe76e49406165" "many-languages-of-ui"
+--     , BlogRecord 1 4   2017 "Microservices "                                          "95e98991640e5afcc3d7eb692ada6de9" "microservices"
+--     , BlogRecord 12 13 2016 "Obvious way to build a  web  API "                       "6e0e9a49a3d7990399170a33fa6d132e" "obvious-way-to-build-a-web-api"
+--     , BlogRecord 11 10 2016 "Building a large, complex web application with Haskell " "a9a51ff2c20b6b8aaa2d87208fd45b6d" "building-a-large,-complex-web-application-with-haskell"
+--     , BlogRecord 8 8   2016 "Software Engineering "                                   "2969d9fecd518337115638821679160f" "software-engineering"
+--     , BlogRecord 7 6   2016 "HTML user input and virtual dom "                        "6e6cd20902f0eac3087374b34cdd453c" "html-user-input-and-virtual-dom"
+--     , BlogRecord 6 30  2016 "Atom + Haskell "                                         "a6591ac9a5c2deb60f34a2ea568f1863" "atom-and-haskell"
+--     , BlogRecord 2 17  2016 "Divide and rule "                                        "5431761c6544b261be05"             "divide-and-rule"
+--     , BlogRecord 3 9   2016 "Framework as type "                                      "9cd87f04072cf70bbbee"             "framework-as-type"
+--     , BlogRecord 1 29  2016 "meta.repl "                                              "1db636e4abdb59a615d3"             "meta.repl"
+--     , BlogRecord 1 26  2016 "OOP "                                                    "f06430e57f16ceb62c53"             "oop"
+--     , BlogRecord 1 25  2016 "MVVM Component "                                         "d3b9d9f579a32798b85c"             "mvvm-component"
+--     , BlogRecord 1 23  2016 "Stateful components "                                    "ddb4287df6585105018e"             "stateful-components"
+--     , BlogRecord 1 18  2016 "Ladder of Abstraction "                                  "827a94c6a1a0fec3801e"             "ladder-of-abstraction"
+--     , BlogRecord 1 17  2016 "TDD "                                                    "14f062aa73fbc19b1d8f"             "tdd"
+--     , BlogRecord 1 16  2016 "Strong vs Unityped "                                     "3901963f724f90190a1c"             "strong-vs-unityped"
+--     , BlogRecord 1 14  2016 "Constrain everything "                                   "a5980063201c3b8c2112"             "constrain-everything"
+--     , BlogRecord 1 13  2016 "Immutable world "                                        "2b7285f5fc7f8ccd2e07"             "immutable-world"
+--     , BlogRecord 12 30 2015 "Abstract (\"Web\") Application "                         "c1d71ff4e670ef82c535"             "abstract-web-application"
+--     , BlogRecord 12 17 2015 "DNA Architecture "                                       "cdc388425dacf87cba71"             "dna-architecture"
+--     , BlogRecord 12 21 2015 "ActivitiesView.js "                                      "9a374a884cf2a06d0f45"             "activitiesview.js"
+--     , BlogRecord 1 24  2016 "Test "                                                   "8f4d22137a20da9237b9"             "test"
+--     ]

@@ -100,7 +100,7 @@ editorComponent nU uiToggleU lockS = do
         (Locked, _)         -> error_ ("Not logged in" :: JSString) >> pure ()
         (Unlocked _,  None) -> error_ ("Wrong editor state None" :: JSString)
         (Unlocked ak, NewG) -> createGist_ busyU ak g' >>= handleResult closeS reset uiToggleU outpU t 
-        (Unlocked ak, _)    -> saveGist_ busyU ak g'   >>= handleResult closeS reset uiToggleU outpU t 
+        (Unlocked ak, _)    -> saveGist_   busyU ak g' >>= handleResult closeS reset uiToggleU outpU t 
 
     error_ :: JSString -> FRP ()
     error_ = nU . Just . nerr

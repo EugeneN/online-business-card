@@ -488,6 +488,10 @@ ul.img-list {
   padding: 0;
 }
 
+.articles-index li {
+  list-style-type: none;
+}
+
 
 .articles-index a:hover {
   /*text-decoration: underline;*/
