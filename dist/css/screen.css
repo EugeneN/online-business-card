@@ -150,6 +150,14 @@ iframe {
   color: white !important;
   text-decoration: none !important;
 }
+
+.menu-level-1 {
+  font-size: 90%;
+}
+.menu-level-2 {
+  font-size: 90%;
+}
+
 .menu-level-2-x { font-size: 10px; }
 .menu-level-3-x { font-size: 10px; }
 .menu-level-4-x { font-size: 10px; }
