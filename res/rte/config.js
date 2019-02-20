@@ -36,4 +36,5 @@ CKEDITOR.editorConfig = function( config ) {
 	config.protectedSource.push( /\n/g );
 	config.allowedContent = true;
 	config.entities = false;
+	CKEDITOR.config.autoParagraph = false;
 };

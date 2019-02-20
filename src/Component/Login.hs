@@ -84,6 +84,6 @@ loginComponent nU uiToggleU = do
             [ H.h1 [] [H.text "Login"]
             , H.div [] [stringWidget   True  (contramapSink (\n -> DontSubmit $ LoginForm n pass)  u) uname]
             , H.div [] [passwordWidget False (contramapSink (\n -> DontSubmit $ LoginForm uname n) u) pass]
-            , H.button [E.click $ \_ -> u $ Submit v] [H.text "Ok"]
-            , H.button [E.click $ \_ -> uiToggleU' Site] [H.text "Cancel"]
+            , H.button [E.click $ \_ -> u $ Submit v] [H.text "Okay"]
+            , H.button [E.click $ \_ -> uiToggleU' Site] [H.text "Nope"]
             ]

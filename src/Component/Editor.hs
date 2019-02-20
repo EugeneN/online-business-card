@@ -11,7 +11,6 @@ module Component.Editor
 import           GHCJS.Types                    (JSString)
 import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void)
-import qualified Data.JSString                  as JSS   
 import           Data.Monoid                    ((<>))
 import           Data.Maybe                     (listToMaybe)
 import           Data.Time.Clock                (getCurrentTime)
@@ -88,14 +87,10 @@ editorComponent nU uiToggleU lockS = do
   
       now <- getCurrentTime
   
-      let c' = case t of
-                  RootG -> JSS.dropEnd 4 . JSS.drop 3 $ c -- FIXME ckeditor keeps wrapping content into <p>..</p>
-                  BlogG -> JSS.dropEnd 4 . JSS.drop 3 $ c -- FIXME ckeditor keeps wrapping content into <p>..</p>
-                  _     -> c
-          d  = case t of
+      let d  = case t of
                   NewG -> showJS now <> ".html"
                   _    -> description g
-          f' = f{f_content = c'}
+          f' = f{f_content = c}
           g' = g{files = Files [f'], description = d}
 
       case (a, t) of
