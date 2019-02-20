@@ -65,7 +65,7 @@ newtype BlogGist =
   deriving (Show)
 
 type Model = (DT.Forest Page, Path, Lock, Maybe RootGist, Maybe BlogIndex)
-type Model_ = (DT.Forest Page, Path)
+type Model_ = (DT.Forest Page, Path, Maybe BlogIndex)
 
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON

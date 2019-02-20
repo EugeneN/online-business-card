@@ -10,9 +10,10 @@ import           Data.Aeson
 import qualified Data.ByteString.Char8          as BS
 import qualified Data.JSString                  as JSS      
 import           Data.List                      (sortOn, foldl')
-import           Data.Maybe                     (fromMaybe)
+import           Data.Maybe                     (fromMaybe, listToMaybe)
 import           Data.Monoid                    ((<>))
 import qualified Data.Tree                      as DT
+import           Control.Applicative            ((<|>))
 import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void, join)
 import qualified Web.VirtualDom.Html            as H
@@ -33,7 +34,8 @@ import           Net
 import           Types
 
 
-data ViewState = GistPending (Maybe Path) | GistError DatasourceError | GistReady Gist | Blog | AMessage JSS.JSString
+data ViewState = GistPending (Maybe Path) | GistError DatasourceError | GistReady Gist 
+               | Blog | AMessage JSS.JSString
 
 data Cmd = CLock | CUnlock | CEdit EditCmd 
 
@@ -51,7 +53,7 @@ siteComponent c = do
   (stateU, stateModel)   <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
   (cmdU, cmdE)           <- newEvent :: FRP (Sink Cmd, Events Cmd)
 
-  let model_ = (,) <$> stateModel <*> navS :: Signal Model_                                                 
+  let model_ = (,,) <$> stateModel <*> navS <*> blogS :: Signal Model_                                                 
   let model  = (,,,,) <$> stateModel <*> navS <*> lockS <*> rootS <*> blogS :: Signal Model                                                 
   let v      = view cmdU <$> viewModel <*> model
   let v'     = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv
@@ -62,8 +64,8 @@ siteComponent c = do
   void $ subscribeEvent le $ \authkey -> uiToggleU Site >> lockU (Unlocked authkey)
   void $ subscribeEvent ee $ handleEdits lockS rootU stateU viewU
 
-  void . forkIO $ loadMenu lockS (rootGist c) rootU stateU viewU 
-  void . forkIO $ loadBlog lockS (blogGist c) blogU        viewU
+  void . forkIO $ loadMenu      lockS (rootGist c) rootU stateU viewU 
+  void . forkIO $ loadBlogIndex lockS (blogGist c) blogU        viewU
 
   pure v'
 
@@ -74,10 +76,14 @@ siteComponent c = do
       Login  -> H.div [] [nv, wrapper' lv]
       Editor -> H.div [] [nv, overlayWrapper ev]
 
-    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> EditResult -> FRP ()
-    handleEdits lockS rootU stateU viewU (RRootGist rg) = loadMenu lockS (Types.id . digout $ rg) rootU stateU viewU 
-    handleEdits lockS _     _      viewU (RGist g)      = loadGist_ lockS viewU (Types.id g) $ viewU . GistReady  -- really, navTo gist url?
-    handleEdits _     _     _      viewU (RNew g)       = viewU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
+    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (DT.Forest Page) 
+                -> Sink ViewState -> EditResult -> FRP ()
+    handleEdits lockS rootU stateU viewU (RRootGist rg) = 
+      loadMenu lockS (Types.id . digout $ rg) rootU stateU viewU 
+    handleEdits lockS _     _      viewU (RGist g)      = 
+      loadGist_ lockS viewU (Types.id g) $ viewU . GistReady  -- really, navTo gist url?
+    handleEdits _     _     _      viewU (RNew g)       = 
+      viewU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
 
     controller :: Sink ViewMode -> Sink Lock -> Sink EditCmd -> Cmd -> FRP ()
     controller uiToggleU lockU edU cmd = 
@@ -87,20 +93,29 @@ siteComponent c = do
         CEdit g         -> edU g
 
     handleModel :: Signal Lock -> Sink ViewState -> Model_ -> FRP ()
-    handleModel lockS viewU (f, p) = 
+    handleModel lockS viewU (f, p, bi) = 
       case findTreeByPath f p of
-        Nothing -> case (f, p) of
-          ([], [])           -> print "1" >> (viewU $ GistPending Nothing)
-          ([], p')           -> print "2" >> (viewU . GistPending . Just $ p)
-          (_, "blog":[])     -> print "3" >> (viewU . GistPending . Just $ p)
-          (_, "blog":bid:[]) -> print "4" >> (loadGist_ lockS viewU (GistId bid) $ viewU . GistReady)
-          (_,  p')           -> print "5" >> (viewU . GistError . NotFound $ p')
-        Just page            -> case p of
-                                  "blog":[] -> print "7" >> (viewU Blog)
-                                  _         -> print "6" >> (loadGist_ lockS viewU (dataSource page) $ viewU . GistReady)
-
-    loadBlog :: Signal Lock -> GistId -> Sink (Maybe BlogIndex) -> Sink ViewState -> FRP ()
-    loadBlog lockS bg blogU viewU  = 
+        Nothing -> case (bi, f, p) of
+          (_,        [], [])           -> viewU $ GistPending Nothing
+          (_,        [], p')           -> viewU . GistPending . Just $ p
+          (_,        _, "blog":[])     -> viewU . GistPending . Just $ p
+          (Nothing,  _, "blog":bid:[]) -> viewU . GistPending . Just $ p
+          (Just bi', _, "blog":bid:[]) -> loadBlog lockS viewU bi' bid
+          (_,        _,  p')           -> viewU . GistError . NotFound $ p'
+        Just page -> case p of
+                        "blog":[] -> viewU Blog
+                        _         -> loadGist_ lockS viewU (dataSource page) $ viewU . GistReady
+    
+    loadBlog :: Signal Lock -> Sink ViewState -> BlogIndex -> Url -> FRP ()
+    loadBlog lockS viewU (BlogIndex bi) s = do
+      viewU . GistPending . Just $ [s]
+      case listToMaybe (Prelude.filter ((s ==) . slug) bi) <|> 
+           listToMaybe (Prelude.filter ((s ==) . hash) bi) of
+        Nothing -> viewU . GistError . NotFound $ [s]
+        Just x  -> loadGist_ lockS viewU (GistId $ hash x) $ viewU . GistReady
+    
+    loadBlogIndex :: Signal Lock -> GistId -> Sink (Maybe BlogIndex) -> Sink ViewState -> FRP ()
+    loadBlogIndex lockS bg blogU viewU  = 
       loadGist_ lockS viewU bg $ \blogGist_ -> 
         case unfiles $ files blogGist_ of
           []    -> viewU $ GistError $ DatasourceError "There are no files in the blog forest"
@@ -109,7 +124,8 @@ siteComponent c = do
                           Left err -> viewU $ GistError $ DatasourceError $ JSS.pack err
                           Right bi' -> blogU $ Just bi'
     
-    loadMenu :: Signal Lock -> GistId -> Sink (Maybe RootGist) -> Sink (DT.Forest Page) -> Sink ViewState -> FRP ()
+    loadMenu :: Signal Lock -> GistId -> Sink (Maybe RootGist) 
+             -> Sink (DT.Forest Page) -> Sink ViewState -> FRP ()
     loadMenu lockS rg rootU stateU viewU  = 
       loadGist_ lockS viewU rg $ \rootGist_ -> do
         rootU $ Just $ RootGist rootGist_
@@ -215,15 +231,22 @@ siteComponent c = do
 
     renderMenuLevel :: Int -> [MenuItem] -> [Html]
     renderMenuLevel _   [] = []
-    renderMenuLevel lvl m  = [H.div [A.class_ $ "menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
+    renderMenuLevel lvl m  = [H.div [A.class_ $ "menu-level-" <> showJS lvl] 
+                                    (fmap renderMenuItem m)]
 
     renderMenuItem :: MenuItem -> Html
-    renderMenuItem (MISelected x ps)   = H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
-    renderMenuItem (MIUnselected x ps) = H.a [A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MISelected x ps)   = 
+      H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MIUnselected x ps) = 
+      H.a [A.href (renderPath ps)] [ H.text x ]
 
     renderLock :: Sink Cmd -> Lock -> Html
-    renderLock cmdU Locked       = H.button [A.class_ "locked",   E.click $ const $ cmdU CUnlock] [ H.img [A.src "https://image.flaticon.com/icons/svg/121/121685.svg"] [] ]
-    renderLock cmdU (Unlocked _) = H.button [A.class_ "unlocked", E.click $ const $ cmdU CLock]   [ H.img [A.src "https://image.flaticon.com/icons/svg/121/121684.svg"] [] ]
+    renderLock cmdU Locked       = 
+      H.button [A.class_ "locked",   E.click $ const $ cmdU CUnlock] 
+               [ H.img [A.src "https://image.flaticon.com/icons/svg/121/121685.svg"] [] ]
+    renderLock cmdU (Unlocked _) = 
+      H.button [A.class_ "unlocked", E.click $ const $ cmdU CLock]   
+               [ H.img [A.src "https://image.flaticon.com/icons/svg/121/121684.svg"] [] ]
 
     renderGistFiles :: [File] -> Html
     renderGistFiles [] = H.div [] []
@@ -235,7 +258,8 @@ siteComponent c = do
     renderBlogIndex :: BlogIndex -> Html
     renderBlogIndex bidx = H.div [A.class_ "section page"] 
                                  [ H.div [A.class_ "text"] 
-                                         [ H.ul [ A.class_ "articles-index" ] (join $ fmap yearsW idx') ] ]
+                                         [ H.ul [ A.class_ "articles-index" ] 
+                                                (join $ fmap yearsW idx') ] ]
       where
         idx  = reverse . sortOn (year) . unblog $ bidx
 
