@@ -7,8 +7,10 @@ module Component.Title
     ) where
 
 import           GHCJS.Types                    (JSString)
+import           Control.Applicative            ((<|>))
 import           Control.Monad                  (void)
-import qualified Data.JSString                  as JSS      
+import qualified Data.JSString                  as JSS   
+import           Data.Maybe                     (listToMaybe, fromMaybe)   
 import           Data.Monoid                    ((<>))
 
 import           Lubeck.FRP                     
@@ -16,13 +18,37 @@ import           Lubeck.FRP
 import           Types
 import           Lib
 
+sep :: JSString
+sep = " ← "
 
-titleComponent :: Signal Model -> FRP ()
+root :: JSString
+root = "ΞN"
+
+titleComponent :: Signal (Model, Maybe BlogIndexFull) -> FRP ()
 titleComponent s = do
-  let s' = fmap (JSS.intercalate " ← " . reverse . ("ΞN" :) . fmap getTitle . flattenMenu . extractMenu') s
+  let s' = fmap handleTitle s
   void $ subscribeEvent (updates s') setTitle
 
   where
+    handleTitle z@((f, p, _, _), _) =
+      case p of
+        "blog":[]    -> menuPipeline z
+        "blog":bid:_ -> blogPipeline z bid
+        _            -> menuPipeline z
+
+    menuPipeline = JSS.intercalate sep . reverse . (root :) . fmap getTitle . flattenMenu . extractMenu' . fst
+
+    blogPipeline z@(_, mbi) bid = 
+      case mbi of
+        Nothing      -> menuPipeline z
+        Just (bi, _) -> 
+          let br = listToMaybe (Prelude.filter ((bid ==) . slug) (unblog bi)) <|> 
+                   listToMaybe (Prelude.filter ((bid ==) . hash) (unblog bi)) 
+              t  = menuPipeline z
+              bt = fromMaybe bid $ humanTitle <$> br
+              ft = JSS.intercalate sep [bt, t]
+          in ft
+
     extractMenu' (f, p, _, _) = extractMenu f p []
 
     flattenMenu MenuNil          = []

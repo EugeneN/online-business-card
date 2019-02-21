@@ -45,6 +45,8 @@ newtype BlogIndex =
   BlogIndex { unblog :: [BlogRecord] }
   deriving (GHC.Generic, ToJSON, FromJSON)
 
+type BlogIndexFull = (BlogIndex, BlogGist)
+
 data AuthKey = 
   AuthKey 
     { username :: JSString

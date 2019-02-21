@@ -40,7 +40,6 @@ data ViewState = GistPending (Maybe Path) | GistError DatasourceError | GistRead
 
 data Cmd = CLock | CUnlock | CEdit EditCmd 
 
-type BlogIndexFull = (BlogIndex, BlogGist)
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
@@ -62,7 +61,7 @@ siteComponent c = do
   let v     = view cmdU <$> viewModel <*> model
   let v'    = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv
   
-  void $ titleComponent model
+  void $ titleComponent $ (,) <$> model <*> blogS
   void $ subscribeEvent (updates blogM) $ handleBlogPage lockS                    viewU
   void $ subscribeEvent (updates pageM) $ handleTreePage lockS                    viewU
   void $ subscribeEvent ee              $ handleEdits    lockS rootU blogU stateU viewU
