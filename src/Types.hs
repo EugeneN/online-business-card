@@ -162,6 +162,7 @@ data Gist =
     , description :: JSString
     , files       :: Files 
     , public      :: Bool
+    , html_url    :: Url
     } deriving (GHC.Generic, FromJSON, ToJSON, Show)
 
 type ApiResult = Either Message Gist

@@ -44,7 +44,7 @@ emptyFile :: File
 emptyFile = File "" "" "" 0 Plaintext
 
 emptyGist :: Gist
-emptyGist = Gist Nothing Nothing (GistId "") "" (Files [emptyFile]) False
+emptyGist = Gist Nothing Nothing (GistId "") "" (Files [emptyFile]) False ""
 
 emptyForm :: EditForm
 emptyForm = (emptyGist, emptyFile, "")
@@ -170,5 +170,6 @@ editorComponent nU uiToggleU lockS = do
             [ H.button [E.click $ \_ -> closeU DontClose >> u (Submit (g, f, c))] [H.text "Save"]
             , H.button [E.click $ \_ -> closeU Close >> u (Submit (g, f, c))] [H.text "Save and close"]
             , H.button [E.click $ \_ -> closeU Close >> u (DontSubmit emptyForm) >> loginToggleU_ Site] [H.text "Cancel"]
+            , H.a [A.target "blank_", A.href $ html_url g] [H.text $ html_url g]
             , richEditorWidget True (contramapSink (\n -> DontSubmit (g, f, n)) u) c
             ]
