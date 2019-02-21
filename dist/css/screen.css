@@ -253,6 +253,25 @@ blockquote {
   font-family: helvetica;
   font-weight: bold !important;
 }
+
+.menu-level {
+  transition-delay           : 0s, 0s;
+  transition-duration        : 0.5s, 0.5s;
+  transition-property        : display;
+  transition-timing-function : ease-in-out, ease-in-out;
+  width: auto;
+}
+
+.menu-level-special > a {
+  display: none !important;
+}
+.menu-level-special:hover > a {
+  display: inline-block !important;
+}
+.menu-level-special > a.menu-item-special {
+  display: inline-block !important;
+}
+
 .mode-menu {
   font-size: 10pt;
   margin-right: 1em;

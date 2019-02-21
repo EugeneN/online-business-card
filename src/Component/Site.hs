@@ -203,7 +203,7 @@ siteComponent c = do
       let menu = extractMenu f p []
       in H.div [A.class_ "content"]
                [ H.div [A.class_ "lock"] [renderLock cmdU k]
-               , H.div [A.class_ "section"] $ [ renderMenu cmdU k r menu ] <> editH <> createH <> [b]]
+               , H.div [A.class_ "section"] $ [ renderMenu cmdU k r p menu ] <> editH <> createH <> [b]]
 
     wrapper' :: Html -> Html
     wrapper' b = 
@@ -229,20 +229,20 @@ siteComponent c = do
       H.div [A.class_ "content overlay"]
             [H.div [A.class_ "section"] [ b ]]
 
-    renderMenu :: Sink Cmd -> Lock -> Maybe RootGist -> Menu -> Html
-    renderMenu _    Locked         _ m = H.div [A.class_ "nav"] (renderSubMenu 0 m)
-    renderMenu cmdU k@(Unlocked _) r m = H.div [A.class_ "nav"] (renderSubMenu 0 m <> editButton cmdU (Left r) k)
+    renderMenu :: Sink Cmd -> Lock -> Maybe RootGist -> Path -> Menu -> Html
+    renderMenu _    Locked         _ p m = H.div [A.class_ "nav"] (renderSubMenu p 0 m)
+    renderMenu cmdU k@(Unlocked _) r p m = H.div [A.class_ "nav"] (renderSubMenu p 0 m <> editButton cmdU (Left r) k)
 
-    renderSubMenu :: Int -> Menu -> [Html]
-    renderSubMenu _ MenuNil                       = []
-    renderSubMenu _ (Menu (MenuLevel []) _)       = []
-    renderSubMenu l (Menu (MenuLevel xs) MenuNil) = renderMenuLevel l xs
-    renderSubMenu l (Menu (MenuLevel xs) sm)      = renderMenuLevel l xs <> renderSubMenu (l+1) sm
+    renderSubMenu :: Path -> Int -> Menu -> [Html]
+    renderSubMenu _ _ MenuNil                       = []
+    renderSubMenu _ _ (Menu (MenuLevel []) _)       = []
+    renderSubMenu p l (Menu (MenuLevel xs) MenuNil) = renderMenuLevel p l xs
+    renderSubMenu p l (Menu (MenuLevel xs) sm)      = renderMenuLevel p l xs <> renderSubMenu p (l+1) sm
 
-    renderMenuLevel :: Int -> [MenuItem] -> [Html]
-    renderMenuLevel _   [] = []
-    renderMenuLevel lvl m  = [H.div [A.class_ $ "menu-level-" <> showJS lvl] 
-                                    (fmap renderMenuItem m)]
+    renderMenuLevel :: Path -> Int -> [MenuItem] -> [Html]
+    renderMenuLevel _             _   [] = []
+    renderMenuLevel ("blog":x:[]) 0   m  = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0] (fmap renderMenuItem m)]
+    renderMenuLevel p             lvl m  = [H.div [A.class_ $ "menu-level menu-level-" <> showJS lvl]                  (fmap renderMenuItem m)]
 
     renderMenuItem :: MenuItem -> Html
     renderMenuItem (MISelected x ps True)    = H.a [A.class_ "current-menu-item-special", A.href (renderPath ps)] [ H.text x ]
