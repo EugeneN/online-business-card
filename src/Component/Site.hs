@@ -241,14 +241,14 @@ siteComponent c = do
 
     renderMenuLevel :: Path -> Int -> [MenuItem] -> [Html]
     renderMenuLevel _             _   [] = []
-    renderMenuLevel ("blog":x:[]) 0   m  = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0] (fmap renderMenuItem m)]
-    renderMenuLevel p             lvl m  = [H.div [A.class_ $ "menu-level menu-level-" <> showJS lvl]                  (fmap renderMenuItem m)]
+    renderMenuLevel ("blog":x:[]) 0   m  = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0]   (fmap renderMenuItem m)]
+    renderMenuLevel p             lvl m  = [H.div [A.class_ $ "menu-level                    menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
 
     renderMenuItem :: MenuItem -> Html
     renderMenuItem (MISelected x ps True)    = H.a [A.class_ "current-menu-item-special", A.href (renderPath ps)] [ H.text x ]
-    renderMenuItem (MISelected x ps False)   = H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
-    renderMenuItem (MIUnselected x ps True)  = H.a [A.class_ "menu-item-special", A.href (renderPath ps)] [ H.text x ]
-    renderMenuItem (MIUnselected x ps False) = H.a [A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MISelected x ps False)   = H.a [A.class_ "current-menu-item",         A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MIUnselected x ps True)  = H.a [A.class_ "menu-item-special",         A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MIUnselected x ps False) = H.a [A.class_ "menu-item",                 A.href (renderPath ps)] [ H.text x ]
 
     renderLock :: Sink Cmd -> Lock -> Html
     renderLock cmdU Locked       = 

@@ -100,84 +100,7 @@ iframe {
 .section {
   margin-bottom: 75px;
 }
-.nav {
-  margin-top: 50px;
-  margin-bottom: 100px;
-  text-align: center;
-  font-size: 24px;
-  /*font-family: "Source Code Pro", sans-serif;*/
-  font-family: ff-tisa-web-pro, georgia, serif;
-}
 
-.nav img {
-  width: 20px;
-  height: 20px;
-  position: relative;
-  top: 2px;
-}
-.sub-menu-x { font-size: 12px; }
-.sub-menu-x a {
-  margin-left: 0px !important;
-  margin-right: 0px !important;
-  background-color: rgb(230,230,230);
-  color: black !important;
-}
-
-.sub-menu-x a:first-child {
-  border-top-left-radius: 5px;
-  border-bottom-left-radius: 5px;
-}
-.sub-menu-x a:last-child {
-  border-top-right-radius: 5px;
-  border-bottom-right-radius: 5px;
-}
-
-.sub-menu-x a.current-menu-item:hover {
-  color: white;
-  text-decoration: none !important;
-  background-color: rgb(141,192,244);
-}
-.sub-menu-x a:hover {
-  background-color: #eee;
-  text-decoration: none !important;
-}
-.sub-menu-x a {
-  padding: 3px 10px 3px 10px;
-
-}
-.sub-menu-x a.current-menu-item {
-  background-color: rgb(141,192,244);
-  color: white !important;
-  text-decoration: none !important;
-}
-
-.menu-level-1 {
-  font-size: 90%;
-}
-.menu-level-2 {
-  font-size: 90%;
-}
-
-.menu-level-2-x { font-size: 10px; }
-.menu-level-3-x { font-size: 10px; }
-.menu-level-4-x { font-size: 10px; }
-.menu-level-5-x { font-size: 10px; }
-
-.nav a, .sub-nav a {
-  display: inline-block;
-  margin: 10px;
-  color: #000;
-  text-decoration: none;
-  font-weight: lighter;
-  padding-bottom: 10px;
-  border-bottom: 2px solid white;
-  /*text-transform: uppercase;*/
-}
-.nav a:hover, .sub-nav a:hover {
-  color: #000;
-  /* text-decoration: underline; */
-  border-bottom: 2px solid black;
-}
 .logos {
   margin-top: 50px;
   text-align: center;
@@ -237,69 +160,47 @@ blockquote {
   /*margin-top: 10px;*/
 }
 
-.current-menu-item {
-  /* text-decoration: underline !important; */
-  border-bottom: 2px solid black !important;
+/* ------------------------------ */
+.nav {
+  margin-top: 50px;
+  margin-bottom: 100px;
+  text-align: center;
+  font-size: 24px;
+  font-family: ff-tisa-web-pro, georgia, serif;
 }
 
-.current-menu-item-special {
-  /* text-decoration: underline !important; */
-  border: 2px solid black !important;
-  font-family: helvetica;
-  font-weight: bold !important;
-  width: 32px;
-  height: 32px;
+.menu-level-0 {
+  font-size: 100%;
 }
-.menu-item-special {
-  /* text-decoration: underline !important; */
-  font-family: helvetica;
-  font-weight: bold !important;
+.menu-level-1 {
+  font-size: 90%;
+}
+.menu-level-2 {
+  font-size: 90%;
 }
 
-.menu-level > a {
-  transition: 0.5s;
-  width: auto;
-  display: inline-block;
-  height: 32px;
-  margin: 10px 0px;
-  padding: 10px;
-  border: 2px solid transparent;
-  overflow: hidden;
-  line-height: 32px;
-  opacity: 1;
-}
+/* ------------------------------ */
 
-.menu-level-special > a:hover {
-  border-bottom: 2px solid #000 !important;
-}
-.menu-level-special > a {
-  width: 0px;
-  height: 32px;
-  margin: 0;
-  padding: 0;
-  border: 0px solid transparent;
-  opacity: 0;
-}
-.menu-level-special:hover > a {
-  width: auto;
-  display: inline-block;
-  height: 32px;
-  margin: 10px 0px;
-  padding: 10px;
-  border: 2px solid transparent;
-  overflow: hidden;
-  opacity: 1;
-}
-.menu-level-special > a.menu-item-special {
-  width: auto;
-  display: inline-block;
-  height: 32px;
-  margin: 10px 0px;
-  padding: 10px;
-  border: 2px solid transparent;
-  overflow: hidden;
-  opacity: 1;
-}
+.menu-level > a                                      { transition: 0.5s; width: auto; display: inline-block; height: 32px; margin: 10px 10px; padding: 10px 0; border-top: 2px solid transparent; border-bottom: 2px solid transparent; overflow: hidden; line-height: 32px; opacity: 1; color: #000; text-decoration: none; font-weight: lighter; }
+.menu-level         .menu-item                       {}
+.menu-level         .menu-item:hover                 {border-bottom: 2px solid black !important;}
+.menu-level         .menu-item-special               {font-family: helvetica; font-weight: bold !important; padding: 10px !important; margin: 10px 0 !important; border: 2px solid transparent !important;}
+.menu-level         .menu-item-special:hover         {border: 2px solid #000 !important;}
+.menu-level         .current-menu-item               {border-bottom: 2px solid black !important;}
+.menu-level         .current-menu-item:hover         {}
+.menu-level         .current-menu-item-special       {border: 2px solid black !important; font-family: helvetica; font-weight: bold !important; width: 32px; height: 32px; padding: 10px !important; margin: 10px 0 !important;}
+.menu-level         .current-menu-item-special:hover {}
+
+.menu-level-special .menu-item                       {width: 0px; height: 32px; margin: 0; padding: 0; border-top: 2px solid transparent; border-bottom: 2px solid transparent; opacity: 0;}
+.menu-level-special .menu-item:hover                 {border-bottom: 2px solid #000 !important;}
+.menu-level-special .menu-item-special               {width: auto; display: inline-block; height: 32px; margin: 10px 0px; padding: 10px; border: 0px solid transparent; overflow: hidden; opacity: 1;font-family: helvetica; font-weight: bold !important; padding: 10px !important; margin: 10px 0 !important; border: 2px solid transparent !important;}
+.menu-level-special .menu-item-special:hover         {}
+.menu-level-special .current-menu-item               {width: 0px; height: 32px; margin: 0; padding: 0; border-top: 2px solid transparent;border-bottom: 2px solid black !important; opacity: 0;}
+.menu-level-special .current-menu-item:hover         {}
+.menu-level-special .current-menu-item-special       {border: 2px solid black !important; font-family: helvetica; font-weight: bold !important; width: 32px; height: 32px; padding: 10px !important; margin: 10px 0 !important;}
+.menu-level-special .current-menu-item-special:hover {}
+.menu-level-special:hover > a                        { width: auto; display: inline-block; height: 32px; margin: 10px 10px; padding: 10px 0; border-top: 2px solid transparent; border-bottom: 2px solid transparent; overflow: hidden; opacity: 1; }
+/* ------------------------------ */
 
 .mode-menu {
   font-size: 10pt;

@@ -261,8 +261,8 @@ blockquote {
   width: auto;
   display: inline-block;
   height: 32px;
-  margin: 10px 0px;
-  padding: 10px;
+  margin: 10px 10px;
+  padding: 10px 0;
   border: 2px solid transparent;
   overflow: hidden;
   line-height: 32px;
