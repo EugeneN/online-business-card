@@ -246,12 +246,12 @@ blockquote {
   /* text-decoration: underline !important; */
   border-bottom: 2px solid black !important;
   font-family: helvetica;
-  font-weight: bold;
+  font-weight: bold !important;
 }
 .menu-item-special {
   /* text-decoration: underline !important; */
   font-family: helvetica;
-  font-weight: bold;
+  font-weight: bold !important;
 }
 .mode-menu {
   font-size: 10pt;

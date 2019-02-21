@@ -19,7 +19,7 @@ import           Lib
 
 titleComponent :: Signal Model -> FRP ()
 titleComponent s = do
-  let s' = fmap (JSS.intercalate " ← " . reverse . ("EN" :) . fmap getTitle . flattenMenu . extractMenu') s
+  let s' = fmap (JSS.intercalate " ← " . reverse . ("ΞN" :) . fmap getTitle . flattenMenu . extractMenu') s
   void $ subscribeEvent (updates s') setTitle
 
   where
