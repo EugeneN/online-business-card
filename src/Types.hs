@@ -212,8 +212,8 @@ emptyMenu :: Menu
 emptyMenu = Menu (MenuLevel []) MenuNil
 
 data MenuItem = 
-    MISelected JSString Path 
-  | MIUnselected JSString Path 
+    MISelected JSString Path  Bool
+  | MIUnselected JSString Path Bool
   deriving (Show)
 
 data GithubUser = 

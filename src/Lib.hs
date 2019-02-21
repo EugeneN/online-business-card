@@ -38,6 +38,8 @@ import           Lubeck.Util
 
 import           Types
 
+specialPath :: Path
+specialPath = ["en"]
 
 pureMsg :: JSString -> Signal Html
 pureMsg x = pure $ H.div [A.class_ "pure-msg"] [H.text x] 
@@ -62,13 +64,16 @@ extractMenu f (p0:ps) bc =
   in Menu curLevel subLevel
 
 treeToMenuItem :: Path -> DT.Tree Page -> MenuItem
-treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p])
+treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p]) (isSpecialMenuItem $ bc <> [path p])
+
+isSpecialMenuItem :: Path -> Bool
+isSpecialMenuItem path = if path == specialPath then True else False
 
 pageToMenuItem :: Url -> Path -> Page -> MenuItem
 pageToMenuItem p0 bc p = 
   if path p == p0 
-    then MISelected   (title p) (bc <> [path p]) 
-    else MIUnselected (title p) (bc <> [path p])
+    then MISelected   (title p) (bc <> [path p]) (isSpecialMenuItem $ bc <> [path p])
+    else MIUnselected (title p) (bc <> [path p]) (isSpecialMenuItem $ bc <> [path p])
 
 --------------------------------------------------------------------------------
 type Tag = JSString

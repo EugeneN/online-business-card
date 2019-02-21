@@ -31,11 +31,11 @@ titleComponent s = do
 
     findSelectedItem (MenuLevel xs) = Prelude.filter isSelected xs
 
-    isSelected (MISelected   _ _) = True
-    isSelected (MIUnselected _ _) = False
+    isSelected (MISelected   _ _ _) = True
+    isSelected (MIUnselected _ _ _) = False
     
-    getTitle (MISelected   x _) = x
-    getTitle (MIUnselected x _) = x
+    getTitle (MISelected   x _ _) = x
+    getTitle (MIUnselected x _ _) = x
 
 foreign import javascript unsafe "document.title = $1"
   setTitle :: JSString -> IO ()

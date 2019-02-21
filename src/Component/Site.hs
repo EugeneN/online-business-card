@@ -7,12 +7,13 @@ module Component.Site
     ) where
 
 import           Data.Aeson
-import qualified Data.ByteString.Char8          as BS
 import qualified Data.JSString                  as JSS      
 import           Data.List                      (sortOn, foldl')
 import           Data.Maybe                     (fromMaybe, listToMaybe)
 import           Data.Monoid                    ((<>))
 import qualified Data.Tree                      as DT
+import qualified Data.Text                      as T
+import qualified Data.Text.Encoding             as TE
 import           Control.Applicative            ((<|>))
 import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (void, join)
@@ -129,7 +130,7 @@ siteComponent c = do
       loadGist_ lockS viewU bg $ \blogGist_ -> 
         case unfiles $ files blogGist_ of
           []    -> viewU $ GistError $ DatasourceError "There are no files in the blog forest"
-          (f:_) -> let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String BlogIndex
+          (f:_) -> let forest = eitherDecodeStrict' . TE.encodeUtf8 . T.pack . JSS.unpack . f_content $ f :: Either String BlogIndex
                    in case forest of
                           Left err -> viewU $ GistError $ DatasourceError $ JSS.pack err
                           Right bi' -> blogU $ Just (bi', BlogGist blogGist_)
@@ -141,7 +142,7 @@ siteComponent c = do
         rootU $ Just $ RootGist rootGist_
         case unfiles $ files rootGist_ of
           []    -> viewU $ GistError $ DatasourceError "There are no files in this forest"
-          (f:_) -> let forest = eitherDecodeStrict' . BS.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
+          (f:_) -> let forest = eitherDecodeStrict' . TE.encodeUtf8 . T.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
                    in case forest of
                           Left err      -> viewU $ GistError $ DatasourceError $ JSS.pack err
                           Right forest' -> stateU forest'
@@ -244,10 +245,10 @@ siteComponent c = do
                                     (fmap renderMenuItem m)]
 
     renderMenuItem :: MenuItem -> Html
-    renderMenuItem (MISelected x ps)   = 
-      H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
-    renderMenuItem (MIUnselected x ps) = 
-      H.a [A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MISelected x ps True)    = H.a [A.class_ "current-menu-item-special", A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MISelected x ps False)   = H.a [A.class_ "current-menu-item", A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MIUnselected x ps True)  = H.a [A.class_ "menu-item-special", A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MIUnselected x ps False) = H.a [A.href (renderPath ps)] [ H.text x ]
 
     renderLock :: Sink Cmd -> Lock -> Html
     renderLock cmdU Locked       = 
@@ -270,7 +271,7 @@ siteComponent c = do
                                          [ H.ul [ A.class_ "articles-index" ] 
                                                 (join $ fmap yearsW idx') ] ]
       where
-        idx  = reverse . sortOn (year) . unblog $ bidx
+        idx  = reverse . sortOn year . unblog $ bidx
 
         idx' :: [(Int, [BlogRecord])]
         idx' = foldl' folder [] idx

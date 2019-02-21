@@ -241,6 +241,18 @@ blockquote {
   /* text-decoration: underline !important; */
   border-bottom: 2px solid black !important;
 }
+
+.current-menu-item-special {
+  /* text-decoration: underline !important; */
+  border-bottom: 2px solid black !important;
+  font-family: helvetica;
+  font-weight: bold;
+}
+.menu-item-special {
+  /* text-decoration: underline !important; */
+  font-family: helvetica;
+  font-weight: bold;
+}
 .mode-menu {
   font-size: 10pt;
   margin-right: 1em;
