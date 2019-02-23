@@ -241,6 +241,7 @@ siteComponent c = do
     renderMenuLevel :: Path -> Int -> [MenuItem] -> [Html]
     renderMenuLevel _             _   [] = []
     renderMenuLevel ("blog":_:[]) 0   m  = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0]   (fmap renderMenuItem m)]
+    renderMenuLevel ("photos":[]) 0   m  = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0]   (fmap renderMenuItem m)]
     renderMenuLevel _             lvl m  = [H.div [A.class_ $ "menu-level                    menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
 
     renderMenuItem :: MenuItem -> Html
@@ -294,7 +295,7 @@ siteComponent c = do
           H.li [ A.class_ "articles-index" ]
               [ H.div [ A.class_ "article-index-title" ]
                       [ H.span [ A.class_ "article-index-title-date" ] 
-                                [ H.text $ showJS (day x) <> "/" <> showJS (month x) ] 
+                               [ H.text $ showJS (day x) <> "/" <> showJS (month x) ] 
                       , H.a [ A.href $ "#blog/" <> slug x ] [ H.text $ humanTitle x ]
                       ]
               ]
