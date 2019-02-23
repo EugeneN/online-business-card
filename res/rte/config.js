@@ -37,4 +37,5 @@ CKEDITOR.editorConfig = function( config ) {
 	config.allowedContent = true;
 	config.entities = false;
 	CKEDITOR.config.autoParagraph = false;
+	config.extraPlugins = 'oembed,widget';
 };

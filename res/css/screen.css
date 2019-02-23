@@ -102,12 +102,13 @@ iframe {
 }
 
 .logos {
-  margin-top: 50px;
+  margin-top: 70px;
   text-align: center;
   vertical-align: middle;
 }
 .logos img {
   max-width: 75px;
+  max-height: 75px;
   margin: 0 25px 0 25px;
   vertical-align: middle;
   display: inline-block;
