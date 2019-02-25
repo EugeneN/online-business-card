@@ -465,7 +465,7 @@ ul.img-list {
 
 .articles-index a:hover {
   /*text-decoration: underline;*/
-  border-bottom: 3px solid grey;
+  border-bottom: 2px solid #000;
   text-decoration: none !important;
 }
 
@@ -480,7 +480,7 @@ ul.img-list {
   color: black;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
-  border-bottom: 3px solid white;
+  border-bottom: 2px solid white;
 }
 
 .comments-block {
