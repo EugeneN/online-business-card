@@ -471,7 +471,8 @@ ul.img-list {
 
 .articles-index span {
   display: inline-block;
-  margin-right: 10px;
+  float: right;
+  margin-top: 10px;
 }
 .articles-index a {
   display: inline-block;;
@@ -490,6 +491,12 @@ ul.img-list {
   font-size: 150%;
   margin-top: 30px;
   margin-bottom: 30px;
+  font-family: helvetica;
+  font-weight: lighter;
+  transform: rotate(-90deg);
+  position: relative;
+  left: -440px;
+  top: -230px;
 }
 
 .article-index-title-date {
