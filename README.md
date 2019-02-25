@@ -18,7 +18,7 @@
 - Copy the contents of the `dist` directory to your web server path.
 - Create a Github Gist containing a **json** representation of the `Data.Tree` site tree (or edit the json example below.). 
 - Create a gist containing a **json** representation of the blog index.
-- Replace the root gist id and the blog gist id in the `index.html` file with the ids of your root gist:
+- Replace the root gist id and the blog gist id in the `index.html` file with the ids of your gists:
 
   `<script>window.RootG=JSON.stringify({"rootGist":"...", "blogGist":"..."})</script>`
 
