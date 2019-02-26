@@ -286,8 +286,8 @@ siteComponent c = do
 
         yearsW :: (Int, [BlogRecord]) -> [Html]
         yearsW (y, xs) = 
-          [ H.li [ A.class_ "articles-index" ] 
-                [ H.div [ A.class_ "article-index-year"] [ H.text $ showJS y] ] 
+          [ H.li [ A.class_ "articles-index article-index-year" ] 
+                [ H.div [ A.class_ "article-index-year-inner"] [ H.text $ showJS y] ] 
           ] <> fmap monthsW (reverse . sortOn day . reverse . sortOn month $ xs)
 
         monthsW :: BlogRecord -> Html

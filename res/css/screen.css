@@ -460,19 +460,25 @@ ul.img-list {
 
 .articles-index li {
   list-style-type: none;
+  position: relative;
 }
 
 
 .articles-index a:hover {
   /*text-decoration: underline;*/
-  border-bottom: 2px solid #000;
+  border-bottom: 2px solid #000472;
   text-decoration: none !important;
 }
 
-.articles-index span {
+.articles-index .article-index-title:hover span {
   display: inline-block;
-  float: right;
+}
+
+.articles-index .article-index-title span {
   margin-top: 10px;
+  position: absolute;
+  left: -50px;
+  display: none;
 }
 .articles-index a {
   display: inline-block;;
@@ -487,16 +493,21 @@ ul.img-list {
   margin-top: 55px;
 }
 
+.article-index-year-inner {
+  width: aut;
+  transform: rotate(-90deg);
+  display: inline-block;
+  position: relative;
+  top: 100px;
+}
+
 .article-index-year {
   font-size: 150%;
   margin-top: 30px;
   margin-bottom: 30px;
   font-family: helvetica;
   font-weight: lighter;
-  transform: rotate(-90deg);
-  position: relative;
-  left: -440px;
-  top: -230px;
+  text-align: right;
 }
 
 .article-index-title-date {
