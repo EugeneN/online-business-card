@@ -11,6 +11,7 @@ import qualified Data.JSString                  as JSS
 import           Data.List                      (sortOn, foldl')
 import           Data.Maybe                     (fromMaybe, listToMaybe)
 import           Data.Monoid                    ((<>))
+import           Data.Time.Calendar             (fromGregorian)
 import qualified Data.Tree                      as DT
 import qualified Data.Text                      as T
 import qualified Data.Text.Encoding             as TE
@@ -288,7 +289,7 @@ siteComponent c = do
         yearsW (y, xs) = 
           [ H.li [ A.class_ "articles-index article-index-year" ] 
                 [ H.div [ A.class_ "article-index-year-inner"] [ H.text $ showJS y] ] 
-          ] <> fmap monthsW (reverse . sortOn day . reverse . sortOn month $ xs)
+          ] <> fmap monthsW (reverse . sortOn (\x -> fromGregorian (fromIntegral $ year x) (month x) (day x)) $ xs)
 
         monthsW :: BlogRecord -> Html
         monthsW x = 
