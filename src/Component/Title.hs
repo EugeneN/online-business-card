@@ -30,11 +30,8 @@ titleComponent s = do
   void $ subscribeEvent (updates s') setTitle
 
   where
-    handleTitle z@((f, p, _, _), _) =
-      case p of
-        "blog":[]    -> menuPipeline z
-        "blog":bid:_ -> blogPipeline z bid
-        _            -> menuPipeline z
+    handleTitle z@((_, p:bid:etc, _, _), _) | isBlog (p:bid:etc) = blogPipeline z bid
+    handleTitle z                                                = menuPipeline z
 
     menuPipeline = JSS.intercalate sep . reverse . (root :) . fmap getTitle . flattenMenu . extractMenu' . fst
 

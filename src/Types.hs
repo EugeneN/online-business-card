@@ -31,6 +31,16 @@ jss2text = T.pack . JSS.unpack
 text2jss :: T.Text -> JSString 
 text2jss = JSS.pack . T.unpack
 
+blogSlug :: Url
+blogSlug = "essays"
+
+specialMenuPaths :: [Url]
+specialMenuPaths = ["essays", "photos"]
+
+redirects :: Path -> Maybe Path
+redirects ("blog":xs) = Just $ "essays":xs
+redirects _           = Nothing
+
 data BlogRecord = 
   BlogRecord 
     { day        :: Int

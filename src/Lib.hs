@@ -13,6 +13,9 @@ module Lib
  , pureMsg
  , renderPath
  , writeBlogIndex
+ , redirectLocal
+ , isBlog
+ , isSpecialPath
  ) where
 
 import           Data.Aeson
@@ -144,6 +147,20 @@ htmlStringToVirtualDom s = fmap go htmlAST
                                                      then VirtualDom.attribute (JSS.pack key) (JSS.pack val)
                                                      else VirtualDom.attribute ("invalid-attr:" <> JSS.pack key) ""
 
+
+isBlog :: Path -> Bool
+isBlog []    = False
+isBlog (x:_) = x == blogSlug
+
+isSpecialPath :: Path -> Bool
+isSpecialPath []     = False
+isSpecialPath (x:[]) = False
+isSpecialPath (x:_)  = x `elem` specialMenuPaths
+
+redirectLocal :: Path -> IO ()
+redirectLocal = redirectLocal_ . renderPath
+
+foreign import javascript unsafe "document.location.hash = $1" redirectLocal_ :: JSString -> IO ()
 
 foreign import javascript unsafe "btoa($1)" btoa :: JSString -> JSString
 

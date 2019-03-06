@@ -62,6 +62,7 @@ siteComponent c = do
   let v     = view cmdU <$> viewModel <*> model
   let v'    = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv
   
+  void $ subscribeEvent (updates navS) handleRedirects
   void $ titleComponent $ (,) <$> model <*> blogS
   void $ subscribeEvent (updates blogM) $ handleBlogPage lockS                    viewU
   void $ subscribeEvent (updates pageM) $ handleTreePage lockS                    viewU
@@ -81,6 +82,11 @@ siteComponent c = do
       Login  -> H.div [] [nv, wrapper' lv]
       Editor -> H.div [] [nv, overlayWrapper ev]
 
+    handleRedirects :: Path -> IO ()
+    handleRedirects p = case redirects p of
+      Just p' -> redirectLocal p'
+      Nothing -> pure ()
+
     handleLogin :: Sink ViewMode -> Sink Lock -> AuthKey -> FRP ()
     handleLogin uiToggleU lockU authkey = uiToggleU Site >> lockU (Unlocked authkey)
 
@@ -98,24 +104,24 @@ siteComponent c = do
         CEdit g -> edU g
 
     handleBlogPage :: Signal Lock -> Sink ViewState -> (Path, Maybe BlogIndexFull) -> FRP ()
-    handleBlogPage lockS viewU (p, bi) = 
-      case (bi, p) of
-        (Nothing,         "blog":[])     -> viewU . GistPending . Just $ p -- blog index
-        (Nothing,         "blog":_:[])   -> viewU . GistPending . Just $ p -- blog article
-        (Just (bi', big), "blog":[])     -> viewU $ Blog bi' big
-        (Just (bi', _),   "blog":bid:[]) -> loadBlog lockS viewU bi' bid
-        _                                -> pure ()
+    handleBlogPage lockS viewU (p:ps, bi) | isBlog (p:ps) = case (bi, ps) of
+      (Nothing,         [])     -> viewU . GistPending . Just $ p:ps -- blog index
+      (Nothing,         _:[])   -> viewU . GistPending . Just $ p:ps -- blog article
+      (Just (bi', big), [])     -> viewU $ Blog bi' big
+      (Just (bi', _),   bid:[]) -> loadBlog lockS viewU bi' bid
+      _                         -> pure ()
+    
+    handleBlogPage _ _ _ = pure ()
 
     handleTreePage :: Signal Lock -> Sink ViewState -> Model_ -> FRP ()
-    handleTreePage lockS viewU (f, p) = 
-      case (f, p) of
-        ([], [])       -> viewU $ GistPending Nothing
-        ([], p')       -> viewU . GistPending . Just $ p'
-        (m:_, [])      -> loadGist_ lockS viewU (dataSource . DT.rootLabel $ m) $ viewU . GistReady -- home page
-        (_, "blog":_)  -> pure ()                                                                   -- blog is handled elsewhere
-        (ms, ps)       -> case findTreeByPath ms ps of
-                            Nothing   -> viewU . GistError . NotFound $ ps
-                            Just page -> loadGist_ lockS viewU (dataSource page) $ viewU . GistReady
+    handleTreePage _     _     (_, p) | isBlog p = pure ()
+    handleTreePage lockS viewU (f, p)            = case (f, p) of
+      ([], [])  -> viewU $ GistPending Nothing
+      ([], p')  -> viewU . GistPending . Just $ p'
+      (m:_, []) -> loadGist_ lockS viewU (dataSource . DT.rootLabel $ m) $ viewU . GistReady -- home page
+      (ms, ps)  -> case findTreeByPath ms ps of
+                     Nothing   -> viewU . GistError . NotFound $ ps
+                     Just page -> loadGist_ lockS viewU (dataSource page) $ viewU . GistReady
     
     loadBlog :: Signal Lock -> Sink ViewState -> BlogIndex -> Url -> FRP ()
     loadBlog lockS viewU (BlogIndex bi) s = do
@@ -240,10 +246,9 @@ siteComponent c = do
     renderSubMenu p l (Menu (MenuLevel xs) sm)      = renderMenuLevel p l xs <> renderSubMenu p (l+1) sm
 
     renderMenuLevel :: Path -> Int -> [MenuItem] -> [Html]
-    renderMenuLevel _             _   [] = []
-    renderMenuLevel ("blog":_:[]) 0   m  = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0]   (fmap renderMenuItem m)]
-    renderMenuLevel ("photos":[]) 0   m  = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0]   (fmap renderMenuItem m)]
-    renderMenuLevel _             lvl m  = [H.div [A.class_ $ "menu-level                    menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
+    renderMenuLevel _ _   []                  = []
+    renderMenuLevel z 0   m | isSpecialPath z = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0]   (fmap renderMenuItem m)]
+    renderMenuLevel _ lvl m                   = [H.div [A.class_ $ "menu-level                    menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
 
     renderMenuItem :: MenuItem -> Html
     renderMenuItem (MISelected x ps True)    = H.a [A.class_ "current-menu-item-special", A.href (renderPath ps)] [ H.text x ]
