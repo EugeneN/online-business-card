@@ -103,7 +103,9 @@ data Page =
   Page 
     { title      :: JSString
     , path       :: Url
-    , dataSource :: GistId
+    , dataSource :: GistId -- Gist | IPFS | ...
+    -- , special    :: Bool
+    -- , processor :: Html | BlogIndex | Etc
     } deriving (GHC.Generic, ToJSON, FromJSON)
 
 instance Show Page where
@@ -267,7 +269,7 @@ instance FromJSON GithubUser where
 -- blog2Page   = DT.Node (Page "Blog 2" "blog2" (GistId "?")) []
 -- aboutPage   = DT.Node (Page "About" "about" (GistId "b0bb1c06c091b06264f939748df0cf3a")) []
 -- cvPage      = DT.Node (Page "CV" "cv" (GistId "9fa2fe92a22a1fb3da0caf735c3afbe5")) []
--- blogPage    = DT.Node (Page "Blog" "blog" (GistId "?")) [blog1Page, blog2Page]
+-- blogPage    = DT.Node (Page "Essays" "essays" (GistId "?")) [blog1Page, blog2Page]
 -- photosPage  = DT.Node (Page "Photos" "photos" (GistId "?")) []
 -- talksPage   = DT.Node (Page "Talks" "talks" (GistId "?")) []
 -- cmdPage   = DT.Node (Page "cmdPage" "cmdPage" (GistId "?")) []

@@ -135,7 +135,7 @@ siteComponent c = do
     loadBlogIndex lockS bg blogU viewU  = 
       loadGist_ lockS viewU bg $ \blogGist_ -> 
         case unfiles $ files blogGist_ of
-          []    -> viewU $ GistError $ DatasourceError "There are no files in the blog forest"
+          []    -> viewU $ GistError $ DatasourceError "There are no files in this forest"
           (f:_) -> let forest = eitherDecodeStrict' . TE.encodeUtf8 . T.pack . JSS.unpack . f_content $ f :: Either String BlogIndex
                    in case forest of
                           Left err -> viewU $ GistError $ DatasourceError $ JSS.pack err
@@ -302,7 +302,7 @@ siteComponent c = do
               [ H.div [ A.class_ "article-index-title" ]
                       [ H.span [ A.class_ "article-index-title-date" ] 
                                [ H.text $ showJS (day x) <> "/" <> showJS (month x) ] 
-                      , H.a [ A.href $ "#blog/" <> slug x ] [ H.text $ humanTitle x ]
+                      , H.a [ A.href $ renderPath [blogSlug, slug x] ] [ H.text $ humanTitle x ]
                       ]
               ]
           
