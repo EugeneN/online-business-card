@@ -36,6 +36,9 @@ dist: all
 	# gzip -6 -f $(expdir)all.js
 	mv $(expdir)index-dist.html $(expdir)index.html 
 
+push: dist
+	git add . && git commit -m "bs-push" && git push
+
 deploy: dist
 	cp -R ./dist/ ../eugenen.github.io/
 	cd ../eugenen.github.io/ && git add . && git commit -m "bs-deploy" && git push
