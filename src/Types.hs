@@ -39,6 +39,7 @@ specialMenuPaths = ["essays", "photos"]
 
 redirects :: Path -> Maybe Path
 redirects ("blog":xs) = Just $ "essays":xs
+redirects []          = Just ["en"]
 redirects _           = Nothing
 
 data BlogRecord = 
