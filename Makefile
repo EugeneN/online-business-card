@@ -35,3 +35,8 @@ dist: all
 	uglifyjs $(distdir)runmain.js > $(expdir)runmain.js
 	# gzip -6 -f $(expdir)all.js
 	mv $(expdir)index-dist.html $(expdir)index.html 
+
+deploy: dist
+	cp -R ./dist/ ../eugenen.github.io/
+	cd ../eugenen.github.io/ && git add . && git commit -m "bs-deploy" && git push
+
