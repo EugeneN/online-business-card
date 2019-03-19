@@ -60,10 +60,11 @@ siteComponent c = do
   let pageM = (,)   <$> menuModel <*> navS :: Signal Model_                                                 
   let menuM = (,,,) <$> menuModel <*> navS <*> lockS <*> rootS :: Signal Model                                                 
 
-  let menuV = renderMenu cmdU <$> menuM
-  let lockV = renderLock cmdU <$> lockS
-  let v     = view cmdU <$> bodyModel <*> lockS
-  let v'    = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv <*> menuV <*> lockV
+  let menuV  = renderMenu cmdU <$> menuModel <*> navS
+  let menuTV = renderMenuToolbar cmdU <$> lockS <*> rootS
+  let lockV  = renderLock cmdU <$> lockS
+  let v      = view cmdU <$> bodyModel <*> lockS
+  let v'     = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv <*> menuV <*> lockV <*> menuTV
   
   void $ subscribeEvent (updates navS) handleRedirects
   void $ titleComponent $ (,) <$> menuM <*> blogS
@@ -79,9 +80,9 @@ siteComponent c = do
   pure v'
 
   where 
-    layout :: ViewMode -> Html -> Html -> Html -> Html -> Html -> Html -> Html
-    layout s bv lv ev nv mv kv = case s of
-      Site   -> H.div [] [nv, wrapper mv kv bv]
+    layout :: ViewMode -> Html -> Html -> Html -> Html -> Html -> Html -> [Html] -> Html
+    layout s bv lv ev nv mv kv mtv = case s of
+      Site   -> H.div [] [nv, wrapper mv mtv kv bv]
       Login  -> H.div [] [nv, wrapper' lv]
       Editor -> H.div [] [nv, overlayWrapper ev]
 
@@ -206,11 +207,11 @@ siteComponent c = do
     view cmdU (GistReady g) k = 
       H.div [] (editButton cmdU (Right g) k <> createButton cmdU k <> [renderGistFiles . unfiles . files $ g])
     
-    wrapper :: Html -> Html -> Html -> Html
-    wrapper menuH lockH bodyH = 
+    wrapper :: Html -> [Html] -> Html -> Html -> Html
+    wrapper menuH menuTH lockH bodyH = 
       H.div [A.class_ "content"]
             [ H.div [A.class_ "lock"] [lockH]
-            , H.div [A.class_ "section"] $ [menuH, bodyH]]
+            , H.div [A.class_ "section"] $ menuTH <> [menuH, bodyH]]
 
     wrapper' :: Html -> Html
     wrapper' b = 
@@ -236,9 +237,15 @@ siteComponent c = do
       H.div [A.class_ "content overlay"]
             [H.div [A.class_ "section"] [ b ]]
 
-    renderMenu :: Sink Cmd -> Model -> Html
-    renderMenu cmdU (f, p, Locked, _)         = let m = extractMenu f p [] in H.div [A.class_ "nav"] (renderSubMenu p 0 m)
-    renderMenu cmdU (f, p, k@(Unlocked _), r) = let m = extractMenu f p [] in H.div [A.class_ "nav"] (renderSubMenu p 0 m <> editButton cmdU (Left r) k)
+    renderMenu :: Sink Cmd -> DT.Forest Page -> Path -> Html
+    renderMenu cmdU f p = 
+      let m = extractMenu f p [] 
+      in H.div [A.class_ "nav"] (renderSubMenu p 0 m)
+
+    renderMenuToolbar :: Sink Cmd -> Lock -> Maybe RootGist -> [Html]
+    renderMenuToolbar cmdU k r = case k of
+      Locked     -> []
+      Unlocked _ -> editButton cmdU (Left r) k
 
     renderSubMenu :: Path -> Int -> Menu -> [Html]
     renderSubMenu _ _ MenuNil                       = []
