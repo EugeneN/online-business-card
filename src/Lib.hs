@@ -16,8 +16,10 @@ module Lib
  , redirectLocal
  , isBlog
  , isSpecialPath
+ , perfLog
  ) where
 
+import           GHCJS.Types                    (JSVal)
 import           Data.Aeson
 import qualified Data.ByteString.Char8          as BS
 import           Data.JSString                  (JSString)
@@ -169,6 +171,9 @@ foreign import javascript unsafe "if (location.protocol == 'http:') { location.h
 
 foreign import javascript unsafe "window.RootG ? window.RootG.toString() : '' "
   getConfig :: IO JSString
+
+foreign import javascript unsafe "window._perfLog=window._perfLog || []; var x=[performance.now(), $1]; window._perfLog.push(x);"
+  perfLog :: JSString -> IO ()
 
 readConfig :: IO (Either JSString SiteConfig)
 readConfig = do

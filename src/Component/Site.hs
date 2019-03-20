@@ -179,27 +179,27 @@ siteComponent c = do
                       Right a'' -> f a''
 
     view :: Sink Cmd -> BodyState -> Lock -> Html
-    view cmdU (GistPending p) _ = 
+    view _ (GistPending p) _ = 
       let ps = fromMaybe "" $ renderPath <$> p
       in H.div [A.class_ "loader-container"] 
                [ H.div [] [H.text $ "Loading " <> ps]
                , H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] [] ]
 
-    view cmdU (GistError (DatasourceError s)) _ = 
+    view _ (GistError (DatasourceError s)) _ = 
       H.div [A.class_ "s500"] 
             [ -- H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
               H.span [A.class_ "error-message"] [H.text s ]
             -- , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
             ]
                    
-    view cmdU (GistError (NotFound ps)) _ = 
+    view _ (GistError (NotFound ps)) _ = 
       H.div [A.class_ "s404"] 
             [ H.text "The path "
             , H.span [A.class_ "path"] [H.text $ renderPath ps ]
             , H.text " was not found in this forest."
             ]
     
-    view cmdU (AMessage msg) _ = H.div [] [ H.text msg ]
+    view _ (AMessage msg) _ = H.div [] [ H.text msg ]
     
     view cmdU (Blog bi big) k = 
       H.div [] (editBlogButton cmdU big k <> createButton cmdU k <> [renderBlogIndex bi])

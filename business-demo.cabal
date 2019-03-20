@@ -52,6 +52,7 @@ executable business-demo
   build-depends:       base
                      , business-demo
                      , lubeck-web
+                     , lubeck-frp
                      , virtual-dom
                      , benchmark
                      , ghcjs-base
