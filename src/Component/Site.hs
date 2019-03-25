@@ -45,15 +45,15 @@ data Cmd = CLock | CUnlock | CEdit EditCmd
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
   (rootU, rootS)         <- newSignal Nothing
-  navS                   <- navComponent 
-  (nv, nU)               <- notificationsComponent []
-  (lockU, lockS)         <- newSignal Locked
   (blogU, blogS)         <- newSignal Nothing :: FRP (Sink (Maybe BlogIndexFull), Signal (Maybe BlogIndexFull)) 
+  (lockU, lockS)         <- newSignal Locked
   (uiToggleU, uiToggleS) <- newSignal Site
-  (lv, le)               <- loginComponent nU uiToggleU :: FRP (Signal Html, Events AuthKey)
-  (ev, edU, ee)          <- editorComponent nU uiToggleU lockS :: FRP (Signal Html, Sink EditCmd, Events EditResult)
   (bodyU, bodyModel)     <- newSignal (GistPending Nothing)
   (menuU, menuModel)     <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
+  navS                   <- navComponent 
+  (nv, nU)               <- notificationsComponent []
+  (lv, le)               <- loginComponent nU uiToggleU :: FRP (Signal Html, Events AuthKey)
+  (ev, edU, ee)          <- editorComponent nU uiToggleU lockS :: FRP (Signal Html, Sink EditCmd, Events EditResult)
   (cmdU, cmdE)           <- newEvent :: FRP (Sink Cmd, Events Cmd)
 
   let blogM = (,)   <$> blogS     <*> navS :: Signal (Maybe BlogIndexFull, Path)
@@ -82,8 +82,8 @@ siteComponent c = do
   where 
     layout :: ViewMode -> Html -> Html -> Html -> Html -> Html -> Html -> [Html] -> Html
     layout s bv lv ev nv mv kv mtv = case s of
-      Site   -> H.div [] [nv, wrapper mv mtv kv bv]
-      Login  -> H.div [] [nv, wrapper' lv]
+      Site   -> H.div [] [nv, siteWrapper mv mtv kv bv]
+      Login  -> H.div [] [nv, loginWrapper lv]
       Editor -> H.div [] [nv, overlayWrapper ev]
 
     handleRedirects :: Path -> IO ()
@@ -207,15 +207,20 @@ siteComponent c = do
     view cmdU (GistReady g) k = 
       H.div [] (editButton cmdU (Right g) k <> createButton cmdU k <> [renderGistFiles . unfiles . files $ g])
     
-    wrapper :: Html -> [Html] -> Html -> Html -> Html
-    wrapper menuH menuTH lockH bodyH = 
+    siteWrapper :: Html -> [Html] -> Html -> Html -> Html
+    siteWrapper menuH menuTH lockH bodyH = 
       H.div [A.class_ "content"]
             [ H.div [A.class_ "lock"] [lockH]
             , H.div [A.class_ "section"] $ menuTH <> [menuH, bodyH]]
 
-    wrapper' :: Html -> Html
-    wrapper' b = 
+    loginWrapper :: Html -> Html
+    loginWrapper b = 
       H.div [A.class_ "content"]
+            [H.div [A.class_ "section"] [ b ]]
+
+    overlayWrapper :: Html -> Html
+    overlayWrapper b = 
+      H.div [A.class_ "content overlay"]
             [H.div [A.class_ "section"] [ b ]]
 
     editBlogButton :: Sink Cmd -> BlogGist -> Lock -> [Html]
@@ -232,13 +237,8 @@ siteComponent c = do
     createButton cmdU (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit ECreate] [H.text "Create new"]]
     createButton _    _            = []
     
-    overlayWrapper :: Html -> Html
-    overlayWrapper b = 
-      H.div [A.class_ "content overlay"]
-            [H.div [A.class_ "section"] [ b ]]
-
     renderMenu :: Sink Cmd -> DT.Forest Page -> Path -> Html
-    renderMenu cmdU f p = 
+    renderMenu _ f p = 
       let m = extractMenu f p [] 
       in H.div [A.class_ "nav"] (renderSubMenu p 0 m)
 
