@@ -50,6 +50,7 @@ data BlogRecord =
     , humanTitle :: JSString
     , hash       :: JSString
     , slug       :: JSString
+    , isPublic   :: Bool
     } deriving (GHC.Generic, ToJSON, FromJSON)
 
 newtype BlogIndex = 

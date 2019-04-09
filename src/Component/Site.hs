@@ -142,7 +142,7 @@ siteComponent c = do
           []    -> bodyU $ GistError $ DatasourceError "There are no files in this forest"
           (f:_) -> let forest = eitherDecodeStrict' . TE.encodeUtf8 . T.pack . JSS.unpack . f_content $ f :: Either String BlogIndex
                    in case forest of
-                          Left err -> bodyU $ GistError $ DatasourceError $ JSS.pack err
+                          Left err  -> bodyU $ GistError $ DatasourceError $ JSS.pack err
                           Right bi' -> blogU $ Just (bi', BlogGist blogGist_)
     
     loadMenu :: Signal Lock -> GistId -> Sink (Maybe RootGist) 
@@ -302,7 +302,7 @@ siteComponent c = do
         yearsW (y, xs) = 
           [ H.li [ A.class_ "articles-index article-index-year" ] 
                 [ H.div [ A.class_ "article-index-year-inner"] [ H.text $ showJS y] ] 
-          ] <> fmap monthsW (reverse . sortOn (\x -> fromGregorian (fromIntegral $ year x) (month x) (day x)) $ xs)
+          ] <> fmap monthsW (reverse . sortOn (\x -> fromGregorian (fromIntegral $ year x) (month x) (day x)) . Prelude.filter isPublic $ xs)
 
         monthsW :: BlogRecord -> Html
         monthsW x = 
