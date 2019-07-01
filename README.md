@@ -3,7 +3,7 @@
 
 ## Build
 
-- Get Stack, make
+- Get `Stack`, `make`
 - `stack setup` to get GHCJS etc
 - `make all`
 
@@ -27,7 +27,21 @@
 
 ## Example root gist
 
-`dataSource` is a gist id. Gist is expected to contain an **html** string.
+`dataSource` is a gist id. Gist is expected to contain a string with valid json.
+
+`blogSlug` specifies the blog slug (blog part is processed in a different way).
+
+`collapsedMenuPaths` is a list of slug prefixes for which the menu will be collapsed.
+
+`titleRoot` specifies the root label in the title bar.
+
+`titleSep` specifies a separator for title parts.
+
+`forest` contains a list of trees representing hierarchical structure of the content.
+
+Each element in the trees has the same properties:
+
+`dataSource` is an id of a gist containg the **html** content of the page.
 
 `title` is menu item title as shown in the menu.
 
@@ -35,54 +49,59 @@
 
 
 ```json
-
-[
+{ "blogSlug": "blog"
+, "collapsedMenuPaths": [ "blog", "photos" ]
+, "titleRoot": "<♥>"
+, "titleSep": " \ "
+, "forest": 
     [
-        {
-            "dataSource": "<gist-id>",
-            "title": "Menu item 1",
-            "path": "item1"
-        },
         [
+            {
+                "dataSource": "<gist-id>",
+                "title": "Menu item 1",
+                "path": "item1"
+            },
             [
-                {
-                    "dataSource": "<gist-id>",
-                    "title": "Submenu level 1 item 1",
-                    "path": "subitem1"
-                },
-                []
-            ],
-            [
-                {
-                    "dataSource": "<gist-id>",
-                    "title": "Submenu level 1 item 2",
-                    "path": "subitem2"
-                },
                 [
+                    {
+                        "dataSource": "<gist-id>",
+                        "title": "Submenu level 1 item 1",
+                        "path": "subitem1"
+                    },
+                    []
+                ],
+                [
+                    {
+                        "dataSource": "<gist-id>",
+                        "title": "Submenu level 1 item 2",
+                        "path": "subitem2"
+                    },
                     [
-                        {
-                            "dataSource": "<gist-id>",
-                            "title": "Submenu level 2 item 1",
-                            "path": "subsubitem1"
-                        },
-                        []
-                    ],
-                    ...
-                ]
-            ],
-            ...
-        ]
-    ],
-    [
-        {
-            "dataSource": "<gist-id>",
-            "title": "Menu item s",
-            "path": "item2"
-        },
-        []
-    ],
-    ...
-]
+                        [
+                            {
+                                "dataSource": "<gist-id>",
+                                "title": "Submenu level 2 item 1",
+                                "path": "subsubitem1"
+                            },
+                            []
+                        ],
+                        ...
+                    ]
+                ],
+                ...
+            ]
+        ],
+        [
+            {
+                "dataSource": "<gist-id>",
+                "title": "Menu item s",
+                "path": "item2"
+            },
+            []
+        ],
+        ...
+    ]
+}
 
 ```
 
