@@ -49,21 +49,21 @@ siteComponent c = do
   (lockU, lockS)         <- newSignal Locked
   (uiToggleU, uiToggleS) <- newSignal Site
   (bodyU, bodyModel)     <- newSignal (GistPending Nothing)
-  (menuU, menuModel)     <- newSignal [] :: FRP (Sink (DT.Forest Page), Signal (DT.Forest Page))
+  (menuU, menuModel)     <- newSignal emptyArea :: FRP (Sink Area, Signal Area)
   navS                   <- navComponent 
   (nv, nU)               <- notificationsComponent []
   (lv, le)               <- loginComponent nU uiToggleU :: FRP (Signal Html, Events AuthKey)
   (ev, edU, ee)          <- editorComponent nU uiToggleU lockS :: FRP (Signal Html, Sink EditCmd, Events EditResult)
   (cmdU, cmdE)           <- newEvent :: FRP (Sink Cmd, Events Cmd)
 
-  let blogM = (,)   <$> blogS     <*> navS :: Signal (Maybe BlogIndexFull, Path)
+  let blogM = (,,)  <$> blogS    <*> navS <*> menuModel :: Signal (Maybe BlogIndexFull, Path, Area)
   let pageM = (,)   <$> menuModel <*> navS :: Signal Model_                                                 
   let menuM = (,,,) <$> menuModel <*> navS <*> lockS <*> rootS :: Signal Model                                                 
 
   let menuV  = renderMenu cmdU <$> menuModel <*> navS
   let menuTV = renderMenuToolbar cmdU <$> lockS <*> rootS
   let lockV  = renderLock cmdU <$> lockS
-  let v      = view cmdU <$> bodyModel <*> lockS
+  let v      = view cmdU <$> bodyModel <*> lockS <*> menuModel
   let v'     = layout <$> uiToggleS <*> v <*> lv <*> ev <*> nv <*> menuV <*> lockV <*> menuTV
   
   void $ subscribeEvent (updates navS) handleRedirects
@@ -76,6 +76,8 @@ siteComponent c = do
 
   void . forkIO $ loadMenu      lockS (rootGist c) rootU menuU bodyU 
   void . forkIO $ loadBlogIndex lockS (blogGist c) blogU       bodyU
+
+  print emptyArea
 
   pure v'
 
@@ -94,7 +96,7 @@ siteComponent c = do
     handleLogin :: Sink ViewMode -> Sink Lock -> AuthKey -> FRP ()
     handleLogin uiToggleU lockU authkey = uiToggleU Site >> lockU (Unlocked authkey)
 
-    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (Maybe BlogIndexFull) -> Sink (DT.Forest Page) -> Sink BodyState -> EditResult -> FRP ()
+    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (Maybe BlogIndexFull) -> Sink Area -> Sink BodyState -> EditResult -> FRP ()
     handleEdits lockS rootU _     menuU  bodyU (RRootGist rg) = loadMenu      lockS (Types.id . digout $ rg)  rootU menuU bodyU 
     handleEdits lockS _     blogU _      bodyU (RBlogGist bg) = loadBlogIndex lockS (Types.id . blogout $ bg) blogU        bodyU 
     handleEdits lockS _     _     _      bodyU (RGist g)      = loadGist_ lockS bodyU (Types.id g) $ bodyU . GistReady                                -- really, navTo gist url?
@@ -107,8 +109,8 @@ siteComponent c = do
         CUnlock -> uiToggleU Login
         CEdit g -> edU g
 
-    handleBlogPage :: Signal Lock -> Sink BodyState -> (Maybe BlogIndexFull, Path) -> FRP ()
-    handleBlogPage lockS bodyU (bi, p:ps) | isBlog (p:ps) = case (bi, ps) of
+    handleBlogPage :: Signal Lock -> Sink BodyState -> (Maybe BlogIndexFull, Path, Area) -> FRP ()
+    handleBlogPage lockS bodyU (bi, p:ps, area) | isBlog (blogSlug area) (p:ps) = case (bi, ps) of
       (Nothing,         [])     -> bodyU . GistPending . Just $ p:ps -- blog index
       (Nothing,         _:[])   -> bodyU . GistPending . Just $ p:ps -- blog article
       (Just (bi', big), [])     -> bodyU $ Blog bi' big
@@ -118,8 +120,8 @@ siteComponent c = do
     handleBlogPage _ _ _ = pure ()
 
     handleTreePage :: Signal Lock -> Sink BodyState -> Model_ -> FRP ()
-    handleTreePage _     _     (_, p) | isBlog p = pure ()
-    handleTreePage lockS bodyU (f, p)            = case (f, p) of
+    handleTreePage _     _     ((Area bs _ _), p) | isBlog bs p = pure ()
+    handleTreePage lockS bodyU ((Area _ _ f), p)            = case (f, p) of
       ([], [])  -> bodyU $ GistPending Nothing
       ([], p')  -> bodyU . GistPending . Just $ p'
       (m:_, []) -> loadGist_ lockS bodyU (dataSource . DT.rootLabel $ m) $ bodyU . GistReady -- home page
@@ -146,16 +148,16 @@ siteComponent c = do
                           Right bi' -> blogU $ Just (bi', BlogGist blogGist_)
     
     loadMenu :: Signal Lock -> GistId -> Sink (Maybe RootGist) 
-             -> Sink (DT.Forest Page) -> Sink BodyState -> FRP ()
+             -> Sink Area -> Sink BodyState -> FRP ()
     loadMenu lockS rg rootU menuU bodyU  = 
       loadGist_ lockS bodyU rg $ \rootGist_ -> do
         rootU $ Just $ RootGist rootGist_
         case unfiles $ files rootGist_ of
           []    -> bodyU $ GistError $ DatasourceError "There are no files in this forest"
-          (f:_) -> let forest = eitherDecodeStrict' . TE.encodeUtf8 . T.pack . JSS.unpack . f_content $ f :: Either String (DT.Forest Page)
-                   in case forest of
-                          Left err      -> bodyU $ GistError $ DatasourceError $ JSS.pack err
-                          Right forest' -> menuU forest'
+          (f:_) -> let area = eitherDecodeStrict' . TE.encodeUtf8 . T.pack . JSS.unpack . f_content $ f :: Either String Area
+                   in case area of
+                          Left err    -> bodyU $ GistError $ DatasourceError $ JSS.pack err
+                          Right area' -> menuU area'
 
     findTreeByPath :: DT.Forest Page -> Path -> Maybe Page
     findTreeByPath f p = case (f, p) of
@@ -178,33 +180,33 @@ siteComponent c = do
                       Left  m   -> bodyU $ GistError $ DatasourceError (message m)
                       Right a'' -> f a''
 
-    view :: Sink Cmd -> BodyState -> Lock -> Html
-    view _ (GistPending p) _ = 
+    view :: Sink Cmd -> BodyState -> Lock -> Area -> Html
+    view _ (GistPending p) _ _ = 
       let ps = fromMaybe "" $ renderPath <$> p
       in H.div [A.class_ "loader-container"] 
                [ H.div [] [H.text $ "Loading " <> ps]
                , H.img [A.class_ "ajax-loader", A.src "img/ajax-loader.gif"] [] ]
 
-    view _ (GistError (DatasourceError s)) _ = 
+    view _ (GistError (DatasourceError s)) _ _ = 
       H.div [A.class_ "s500"] 
             [ -- H.span [A.class_ "error-description"] [H.text "Error fetching data: "]
               H.span [A.class_ "error-message"] [H.text s ]
             -- , H.span [A.class_ "error-sorry"] [H.text " Sorry for that."]
             ]
                    
-    view _ (GistError (NotFound ps)) _ = 
+    view _ (GistError (NotFound ps)) _ _ = 
       H.div [A.class_ "s404"] 
             [ H.text "The path "
             , H.span [A.class_ "path"] [H.text $ renderPath ps ]
             , H.text " was not found in this forest."
             ]
     
-    view _ (AMessage msg) _ = H.div [] [ H.text msg ]
+    view _ (AMessage msg) _ _ = H.div [] [ H.text msg ]
     
-    view cmdU (Blog bi big) k = 
-      H.div [] (editBlogButton cmdU big k <> createButton cmdU k <> [renderBlogIndex bi])
+    view cmdU (Blog bi big) k area = 
+      H.div [] (editBlogButton cmdU big k <> createButton cmdU k <> [renderBlogIndex area bi])
 
-    view cmdU (GistReady g) k = 
+    view cmdU (GistReady g) k _ = 
       H.div [] (editButton cmdU (Right g) k <> createButton cmdU k <> [renderGistFiles . unfiles . files $ g])
     
     siteWrapper :: Html -> [Html] -> Html -> Html -> Html
@@ -237,26 +239,26 @@ siteComponent c = do
     createButton cmdU (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit ECreate] [H.text "Create new"]]
     createButton _    _            = []
     
-    renderMenu :: Sink Cmd -> DT.Forest Page -> Path -> Html
-    renderMenu _ f p = 
+    renderMenu :: Sink Cmd -> Area -> Path -> Html
+    renderMenu _ (Area bs cms f) p = 
       let m = extractMenu f p [] 
-      in H.div [A.class_ "nav"] (renderSubMenu p 0 m)
+      in H.div [A.class_ "nav"] (renderSubMenu cms p 0 m)
 
     renderMenuToolbar :: Sink Cmd -> Lock -> Maybe RootGist -> [Html]
     renderMenuToolbar cmdU k r = case k of
       Locked     -> []
       Unlocked _ -> editButton cmdU (Left r) k
 
-    renderSubMenu :: Path -> Int -> Menu -> [Html]
-    renderSubMenu _ _ MenuNil                       = []
-    renderSubMenu _ _ (Menu (MenuLevel []) _)       = []
-    renderSubMenu p l (Menu (MenuLevel xs) MenuNil) = renderMenuLevel p l xs
-    renderSubMenu p l (Menu (MenuLevel xs) sm)      = renderMenuLevel p l xs <> renderSubMenu p (l+1) sm
+    renderSubMenu :: [Url] -> Path -> Int -> Menu -> [Html]
+    renderSubMenu _   _ _ MenuNil                       = []
+    renderSubMenu _   _ _ (Menu (MenuLevel []) _)       = []
+    renderSubMenu cms p l (Menu (MenuLevel xs) MenuNil) = renderMenuLevel cms p l xs
+    renderSubMenu cms p l (Menu (MenuLevel xs) sm)      = renderMenuLevel cms p l xs <> renderSubMenu cms p (l+1) sm
 
-    renderMenuLevel :: Path -> Int -> [MenuItem] -> [Html]
-    renderMenuLevel _ _   []                  = []
-    renderMenuLevel z 0   m | isSpecialPath z = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0]   (fmap renderMenuItem m)]
-    renderMenuLevel _ lvl m                   = [H.div [A.class_ $ "menu-level                    menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
+    renderMenuLevel :: [Url] -> Path -> Int -> [MenuItem] -> [Html]
+    renderMenuLevel _   _ _   []                      = []
+    renderMenuLevel cms z 0   m | isSpecialPath z cms = [H.div [A.class_ $ "menu-level menu-level-special menu-level-" <> showJS 0]   (fmap renderMenuItem m)]
+    renderMenuLevel _   _ lvl m                       = [H.div [A.class_ $ "menu-level                    menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
 
     renderMenuItem :: MenuItem -> Html
     renderMenuItem (MISelected x ps True)    = H.a [A.class_ "current-menu-item-special", A.href (renderPath ps)] [ H.text x ]
@@ -279,11 +281,11 @@ siteComponent c = do
     renderFileH :: File -> [Html]
     renderFileH f = htmlStringToVirtualDom $ f_content f
 
-    renderBlogIndex :: BlogIndex -> Html
-    renderBlogIndex bidx = H.div [A.class_ "section page"] 
-                                 [ H.div [A.class_ "text"] 
-                                         [ H.ul [ A.class_ "articles-index" ] 
-                                                (join $ fmap yearsW idx') ] ]
+    renderBlogIndex :: Area -> BlogIndex -> Html
+    renderBlogIndex area bidx = H.div [A.class_ "section page"] 
+                                      [ H.div [A.class_ "text"] 
+                                              [ H.ul [ A.class_ "articles-index" ] 
+                                                      (join $ fmap (yearsW $ blogSlug area) idx') ] ]
       where
         idx  = reverse . sortOn year . unblog $ bidx
 
@@ -298,14 +300,14 @@ siteComponent c = do
           in if y == y' then init a <> [(y, xs <> [x])]
                         else a <> [(y, [x])]
 
-        yearsW :: (Int, [BlogRecord]) -> [Html]
-        yearsW (y, xs) = 
+        yearsW :: Url -> (Int, [BlogRecord]) -> [Html]
+        yearsW blogSlug (y, xs) = 
           [ H.li [ A.class_ "articles-index article-index-year" ] 
                 [ H.div [ A.class_ "article-index-year-inner"] [ H.text $ showJS y] ] 
-          ] <> fmap monthsW (reverse . sortOn (\x -> fromGregorian (fromIntegral $ year x) (month x) (day x)) . Prelude.filter isPublic $ xs)
+          ] <> fmap (monthsW blogSlug) (reverse . sortOn (\x -> fromGregorian (fromIntegral $ year x) (month x) (day x)) . Prelude.filter isPublic $ xs)
 
-        monthsW :: BlogRecord -> Html
-        monthsW x = 
+        monthsW :: Url -> BlogRecord -> Html
+        monthsW blogSlug x = 
           H.li [ A.class_ "articles-index" ]
               [ H.div [ A.class_ "article-index-title" ]
                       [ H.span [ A.class_ "article-index-title-date" ] 

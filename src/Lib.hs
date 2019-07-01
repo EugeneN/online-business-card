@@ -43,9 +43,6 @@ import           Lubeck.Util
 
 import           Types
 
-specialPath :: Path
-specialPath = ["en"]
-
 pureMsg :: JSString -> Signal Html
 pureMsg x = pure $ H.div [A.class_ "pure-msg"] [H.text x] 
 
@@ -69,16 +66,17 @@ extractMenu f (p0:ps) bc =
   in Menu curLevel subLevel
 
 treeToMenuItem :: Path -> DT.Tree Page -> MenuItem
-treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p]) (isSpecialMenuItem $ bc <> [path p])
+-- treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p]) (isSpecialMenuItem $ bc <> [path p])
+treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p]) (isSpecial p)
 
-isSpecialMenuItem :: Path -> Bool
-isSpecialMenuItem path = if path == specialPath then True else False
+-- isSpecialMenuItem :: Path -> Bool
+-- isSpecialMenuItem path = if path == specialPath then True else False
 
 pageToMenuItem :: Url -> Path -> Page -> MenuItem
 pageToMenuItem p0 bc p = 
   if path p == p0 
-    then MISelected   (title p) (bc <> [path p]) (isSpecialMenuItem $ bc <> [path p])
-    else MIUnselected (title p) (bc <> [path p]) (isSpecialMenuItem $ bc <> [path p])
+    then MISelected   (title p) (bc <> [path p]) (isSpecial p) -- (isSpecialMenuItem $ bc <> [path p])
+    else MIUnselected (title p) (bc <> [path p]) (isSpecial p) -- (isSpecialMenuItem $ bc <> [path p])
 
 --------------------------------------------------------------------------------
 type Tag = JSString
@@ -150,14 +148,14 @@ htmlStringToVirtualDom s = fmap go htmlAST
                                                      else VirtualDom.attribute ("invalid-attr:" <> JSS.pack key) ""
 
 
-isBlog :: Path -> Bool
-isBlog []    = False
-isBlog (x:_) = x == blogSlug
+isBlog :: Url -> Path -> Bool
+isBlog _  []    = False
+isBlog bs (x:_) = x == bs
 
-isSpecialPath :: Path -> Bool
-isSpecialPath []     = False
-isSpecialPath (x:[]) = False
-isSpecialPath (x:_)  = x `elem` specialMenuPaths
+isSpecialPath :: Path -> [Url] -> Bool
+isSpecialPath []     _   = False
+isSpecialPath (x:[]) _   = False
+isSpecialPath (x:_)  cms = x `elem` cms
 
 redirectLocal :: Path -> IO ()
 redirectLocal = redirectLocal_ . renderPath

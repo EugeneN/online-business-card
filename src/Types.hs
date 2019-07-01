@@ -31,11 +31,6 @@ jss2text = T.pack . JSS.unpack
 text2jss :: T.Text -> JSString 
 text2jss = JSS.pack . T.unpack
 
-blogSlug :: Url
-blogSlug = "essays"
-
-specialMenuPaths :: [Url]
-specialMenuPaths = ["essays", "photos"]
 
 redirects :: Path -> Maybe Path
 redirects ("blog":xs) = Just $ "essays":xs
@@ -78,8 +73,8 @@ newtype BlogGist =
   BlogGist { blogout :: Gist }
   deriving (Show)
 
-type Model = (DT.Forest Page, Path, Lock, Maybe RootGist)
-type Model_ = (DT.Forest Page, Path)
+type Model = (Area, Path, Lock, Maybe RootGist)
+type Model_ = (Area, Path)
 
 instance FromJSON JSString where
   parseJSON = fmap textToJSString . parseJSON
@@ -101,12 +96,22 @@ type Url = JSString
 
 type Path = [Url]
 
+data Area =
+  Area
+    { blogSlug           :: Url
+    , collapsedMenuPaths :: [Url]
+    , forest             :: DT.Forest Page
+    } deriving (GHC.Generic, ToJSON, FromJSON, Show)
+
+emptyArea :: Area
+emptyArea = Area "" [] []    
+
 data Page = 
   Page 
-    { title      :: JSString
-    , path       :: Url
-    , dataSource :: GistId -- Gist | IPFS | ...
-    -- , special    :: Bool
+    { title        :: JSString
+    , path         :: Url
+    , dataSource   :: GistId -- Gist | IPFS | ...
+    , isSpecial    :: Bool
     -- , processor :: Html | BlogIndex | Etc
     } deriving (GHC.Generic, ToJSON, FromJSON)
 
@@ -229,7 +234,7 @@ emptyMenu :: Menu
 emptyMenu = Menu (MenuLevel []) MenuNil
 
 data MenuItem = 
-    MISelected   JSString Path Bool
+    MISelected   JSString Path Bool -- title path isSpecial 
   | MIUnselected JSString Path Bool
   deriving (Show)
 
