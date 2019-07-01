@@ -52,7 +52,7 @@ Each element in the trees has the same properties:
 { "blogSlug": "blog"
 , "collapsedMenuPaths": [ "blog", "photos" ]
 , "titleRoot": "<♥>"
-, "titleSep": " \ "
+, "titleSep": " <> "
 , "forest": 
     [
         [
