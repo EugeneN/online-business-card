@@ -77,8 +77,6 @@ siteComponent c = do
   void . forkIO $ loadMenu      lockS (rootGist c) rootU menuU bodyU 
   void . forkIO $ loadBlogIndex lockS (blogGist c) blogU       bodyU
 
-  print emptyArea
-
   pure v'
 
   where 
@@ -120,8 +118,8 @@ siteComponent c = do
     handleBlogPage _ _ _ = pure ()
 
     handleTreePage :: Signal Lock -> Sink BodyState -> Model_ -> FRP ()
-    handleTreePage _     _     ((Area bs _ _), p) | isBlog bs p = pure ()
-    handleTreePage lockS bodyU ((Area _ _ f), p)            = case (f, p) of
+    handleTreePage _     _     ((Area bs _ _ _ _), p) | isBlog bs p = pure ()
+    handleTreePage lockS bodyU ((Area _ _ _ _ f), p)                = case (f, p) of
       ([], [])  -> bodyU $ GistPending Nothing
       ([], p')  -> bodyU . GistPending . Just $ p'
       (m:_, []) -> loadGist_ lockS bodyU (dataSource . DT.rootLabel $ m) $ bodyU . GistReady -- home page
@@ -142,8 +140,8 @@ siteComponent c = do
       loadGist_ lockS bodyU bg $ \blogGist_ -> 
         case unfiles $ files blogGist_ of
           []    -> bodyU $ GistError $ DatasourceError "There are no files in this forest"
-          (f:_) -> let forest = eitherDecodeStrict' . TE.encodeUtf8 . T.pack . JSS.unpack . f_content $ f :: Either String BlogIndex
-                   in case forest of
+          (f:_) -> let x = eitherDecodeStrict' . TE.encodeUtf8 . T.pack . JSS.unpack . f_content $ f :: Either String BlogIndex
+                   in case x of
                           Left err  -> bodyU $ GistError $ DatasourceError $ JSS.pack err
                           Right bi' -> blogU $ Just (bi', BlogGist blogGist_)
     
@@ -240,7 +238,7 @@ siteComponent c = do
     createButton _    _            = []
     
     renderMenu :: Sink Cmd -> Area -> Path -> Html
-    renderMenu _ (Area bs cms f) p = 
+    renderMenu _ (Area _ cms _ _ f) p = 
       let m = extractMenu f p [] 
       in H.div [A.class_ "nav"] (renderSubMenu cms p 0 m)
 
@@ -301,18 +299,18 @@ siteComponent c = do
                         else a <> [(y, [x])]
 
         yearsW :: Url -> (Int, [BlogRecord]) -> [Html]
-        yearsW blogSlug (y, xs) = 
+        yearsW bs (y, xs) = 
           [ H.li [ A.class_ "articles-index article-index-year" ] 
                 [ H.div [ A.class_ "article-index-year-inner"] [ H.text $ showJS y] ] 
-          ] <> fmap (monthsW blogSlug) (reverse . sortOn (\x -> fromGregorian (fromIntegral $ year x) (month x) (day x)) . Prelude.filter isPublic $ xs)
+          ] <> fmap (monthsW bs) (reverse . sortOn (\x -> fromGregorian (fromIntegral $ year x) (month x) (day x)) . Prelude.filter isPublic $ xs)
 
         monthsW :: Url -> BlogRecord -> Html
-        monthsW blogSlug x = 
+        monthsW bs x = 
           H.li [ A.class_ "articles-index" ]
               [ H.div [ A.class_ "article-index-title" ]
                       [ H.span [ A.class_ "article-index-title-date" ] 
                                [ H.text $ showJS (day x) <> "/" <> showJS (month x) ] 
-                      , H.a [ A.href $ renderPath [blogSlug, slug x] ] [ H.text $ humanTitle x ]
+                      , H.a [ A.href $ renderPath [bs, slug x] ] [ H.text $ humanTitle x ]
                       ]
               ]
           

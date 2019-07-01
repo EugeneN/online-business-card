@@ -19,7 +19,6 @@ module Lib
  , perfLog
  ) where
 
-import           GHCJS.Types                    (JSVal)
 import           Data.Aeson
 import qualified Data.ByteString.Char8          as BS
 import           Data.JSString                  (JSString)

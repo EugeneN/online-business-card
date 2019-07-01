@@ -206,3 +206,7 @@ a > img {
 	max-height: 1080px;
 	margin:0 auto;
 }
+
+.code, code { white-space: pre-wrap !important; }
+.eg { padding: 10px 20px; background-color:#ccffcc !important; }
+.superhighlight { padding: 10px 20px; background-color:#ffccff !important; }

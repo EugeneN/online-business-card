@@ -31,7 +31,6 @@ jss2text = T.pack . JSS.unpack
 text2jss :: T.Text -> JSString 
 text2jss = JSS.pack . T.unpack
 
-
 redirects :: Path -> Maybe Path
 redirects ("blog":xs) = Just $ "essays":xs
 redirects []          = Just ["en"]
@@ -100,11 +99,13 @@ data Area =
   Area
     { blogSlug           :: Url
     , collapsedMenuPaths :: [Url]
+    , titleRoot          :: JSString
+    , titleSep           :: JSString
     , forest             :: DT.Forest Page
     } deriving (GHC.Generic, ToJSON, FromJSON, Show)
 
 emptyArea :: Area
-emptyArea = Area "" [] []    
+emptyArea = Area "" [] "" "" []    
 
 data Page = 
   Page 

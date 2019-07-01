@@ -942,3 +942,7 @@ ul.img-list {
   font-size: 15px;
   line-height: 15px;
 }
+
+.code { white-space: pre-wrap !important; }
+.eg { padding: 10px 20px; background-color:#ccffcc !important; }
+.superhighlight { padding: 10px 20px; background-color:#ffccff !important; }

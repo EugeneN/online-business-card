@@ -18,11 +18,6 @@ import           Lubeck.FRP
 import           Types
 import           Lib
 
-sep :: JSString
-sep = " ← "
-
-root :: JSString
-root = "ΞN"
 
 titleComponent :: Signal (Model, Maybe BlogIndexFull) -> FRP ()
 titleComponent s = do
@@ -30,23 +25,23 @@ titleComponent s = do
   void $ subscribeEvent (updates s') setTitle
 
   where
-    handleTitle z@(((Area bs _ _), p:bid:etc, _, _), _) | isBlog bs (p:bid:etc) = blogPipeline z bid
-    handleTitle z                                                               = menuPipeline z
+    handleTitle z@(((Area bs _ r s _), p:bid:etc, _, _), _) | isBlog bs (p:bid:etc) = blogPipeline r s z bid
+    handleTitle z@(((Area _ _ r s _), _, _, _), _)                                  = menuPipeline r s z
 
-    menuPipeline = JSS.intercalate sep . reverse . (root :) . fmap getTitle . flattenMenu . extractMenu' . fst
+    menuPipeline r s = JSS.intercalate s . reverse . (r :) . fmap getTitle . flattenMenu . extractMenu' . fst
 
-    blogPipeline z@(_, mbi) bid = 
+    blogPipeline r s z@(_, mbi) bid = 
       case mbi of
-        Nothing      -> menuPipeline z
+        Nothing      -> menuPipeline r s z
         Just (bi, _) -> 
           let br = listToMaybe (Prelude.filter ((bid ==) . slug) (unblog bi)) <|> 
                    listToMaybe (Prelude.filter ((bid ==) . hash) (unblog bi)) 
-              t  = menuPipeline z
+              t  = menuPipeline r s z
               bt = fromMaybe bid $ humanTitle <$> br
-              ft = JSS.intercalate sep [bt, t]
+              ft = JSS.intercalate s [bt, t]
           in ft
 
-    extractMenu' ((Area _ _ f), p, _, _) = extractMenu f p []
+    extractMenu' ((Area _ _ _ _ f), p, _, _) = extractMenu f p []
 
     flattenMenu MenuNil          = []
     flattenMenu (Menu m MenuNil) = findSelectedItem m
