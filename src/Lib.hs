@@ -65,17 +65,13 @@ extractMenu f (p0:ps) bc =
   in Menu curLevel subLevel
 
 treeToMenuItem :: Path -> DT.Tree Page -> MenuItem
--- treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p]) (isSpecialMenuItem $ bc <> [path p])
 treeToMenuItem bc t = let p = DT.rootLabel t in MIUnselected (title p) (bc <> [path p]) (isSpecial p)
-
--- isSpecialMenuItem :: Path -> Bool
--- isSpecialMenuItem path = if path == specialPath then True else False
 
 pageToMenuItem :: Url -> Path -> Page -> MenuItem
 pageToMenuItem p0 bc p = 
   if path p == p0 
-    then MISelected   (title p) (bc <> [path p]) (isSpecial p) -- (isSpecialMenuItem $ bc <> [path p])
-    else MIUnselected (title p) (bc <> [path p]) (isSpecial p) -- (isSpecialMenuItem $ bc <> [path p])
+    then MISelected   (title p) (bc <> [path p]) (isSpecial p) 
+    else MIUnselected (title p) (bc <> [path p]) (isSpecial p) 
 
 --------------------------------------------------------------------------------
 type Tag = JSString

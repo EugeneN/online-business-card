@@ -20,9 +20,9 @@ import           Lib
 
 
 titleComponent :: Signal (Model, Maybe BlogIndexFull) -> FRP ()
-titleComponent s = do
-  let s' = fmap handleTitle s
-  void $ subscribeEvent (updates s') setTitle
+titleComponent m = do
+  let m' = fmap handleTitle m
+  void $ subscribeEvent (updates m') setTitle
 
   where
     handleTitle z@(((Area bs _ r s _), p:bid:etc, _, _), _) | isBlog bs (p:bid:etc) = blogPipeline r s z bid

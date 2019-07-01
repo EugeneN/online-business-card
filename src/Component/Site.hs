@@ -56,7 +56,7 @@ siteComponent c = do
   (ev, edU, ee)          <- editorComponent nU uiToggleU lockS :: FRP (Signal Html, Sink EditCmd, Events EditResult)
   (cmdU, cmdE)           <- newEvent :: FRP (Sink Cmd, Events Cmd)
 
-  let blogM = (,,)  <$> blogS    <*> navS <*> menuModel :: Signal (Maybe BlogIndexFull, Path, Area)
+  let blogM = (,,)  <$> blogS     <*> navS <*> menuModel :: Signal (Maybe BlogIndexFull, Path, Area)
   let pageM = (,)   <$> menuModel <*> navS :: Signal Model_                                                 
   let menuM = (,,,) <$> menuModel <*> navS <*> lockS <*> rootS :: Signal Model                                                 
 

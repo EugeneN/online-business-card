@@ -31,6 +31,7 @@ jss2text = T.pack . JSS.unpack
 text2jss :: T.Text -> JSString 
 text2jss = JSS.pack . T.unpack
 
+-- TODO FIXME move to gist config
 redirects :: Path -> Maybe Path
 redirects ("blog":xs) = Just $ "essays":xs
 redirects []          = Just ["en"]
