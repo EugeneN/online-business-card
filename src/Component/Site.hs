@@ -70,9 +70,9 @@ siteComponent c = do
   
   void $ titleComponent                    model 
   void $ subscribeEvent (updates navS)     handleRedirects
-  void $ subscribeEvent (updates model)  $ handleBlogPage lockS                       contentU
-  void $ subscribeEvent (updates model_) $ handleTreePage lockS                       contentU
-  void $ subscribeEvent ee               $ handleEdits    lockS rootU bIndexU structU contentU
+  void $ subscribeEvent (updates model)  $ handleBlogPage lockS contentU
+  void $ subscribeEvent (updates model_) $ handleTreePage lockS contentU
+  void $ subscribeEvent ee               $ handleEdits    lockS contentU rootU bIndexU structU
   void $ subscribeEvent cmdE             $ handleCmd      viewModeU lockU edU
   void $ subscribeEvent le               $ handleLogin    viewModeU lockU
 
@@ -96,11 +96,11 @@ siteComponent c = do
     handleLogin :: Sink ViewMode -> Sink Lock -> AuthKey -> FRP ()
     handleLogin viewModeU lockU authkey = viewModeU Site >> lockU (Unlocked authkey)
 
-    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (Maybe BlogIndexFull) -> Sink Area -> Sink ContentState -> EditResult -> FRP ()
-    handleEdits lockS rootU _       structU contentU (RRootGist rg) = loadStruct    lockS (Types.id . digout $ rg)  rootU  structU contentU 
-    handleEdits lockS _     bIndexU _       contentU (RBlogGist bg) = loadBlogIndex lockS (Types.id . blogout $ bg) bIndexU        contentU 
-    handleEdits lockS _     _       _       contentU (RGist g)      = loadGist_     lockS (Types.id g) contentU $ contentU . GistReady                                -- really, navTo gist url?
-    handleEdits _     _     _       _       contentU (RNew g)       = contentU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
+    handleEdits :: Signal Lock -> Sink ContentState -> Sink (Maybe RootGist) -> Sink (Maybe BlogIndexFull) -> Sink Area -> EditResult -> FRP ()
+    handleEdits lockS contentU rootU _       structU (RRootGist rg) = loadStruct    lockS (Types.id . digout $ rg)  rootU  structU contentU 
+    handleEdits lockS contentU _     bIndexU _       (RBlogGist bg) = loadBlogIndex lockS (Types.id . blogout $ bg) bIndexU        contentU 
+    handleEdits lockS contentU _     _       _       (RGist g)      = loadGist_     lockS (Types.id g) contentU $ contentU . GistReady                                -- really, navTo gist url?
+    handleEdits _     contentU _     _       _       (RNew g)       = contentU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
 
     handleCmd :: Sink ViewMode -> Sink Lock -> Sink EditCmd -> Cmd -> FRP ()
     handleCmd viewModeU lockU edU cmd = 
@@ -109,7 +109,7 @@ siteComponent c = do
         CUnlock -> viewModeU Login
         CEdit g -> edU g
 
-    handleBlogPage :: Signal Lock -> Sink ContentState -> (Area, Path, Maybe BlogIndexFull) -> FRP ()
+    handleBlogPage :: Signal Lock -> Sink ContentState -> Model -> FRP ()
     handleBlogPage lockS contentU (area, p:ps, bi) | isBlog (blogSlug area) (p:ps) = case (bi, ps) of
       (Nothing,         [])     -> contentU . GistPending . Just $ p:ps -- blog index
       (Nothing,         _:[])   -> contentU . GistPending . Just $ p:ps -- blog article
