@@ -36,28 +36,31 @@ import           Net
 import           Types
 
 
-data BodyState = GistPending (Maybe Path) | GistError DatasourceError | GistReady Gist 
-               | Blog BlogIndex BlogGist | AMessage JSS.JSString
+data ContentState = GistPending (Maybe Path) | GistError DatasourceError | GistReady Gist 
+                  | Blog BlogIndex BlogGist | AMessage JSS.JSString
+
+defContent :: ContentState            
+defContent = GistPending Nothing
 
 data Cmd = CLock | CUnlock | CEdit EditCmd 
 
 
 siteComponent :: SiteConfig -> FRP (Signal Html)
 siteComponent c = do
-  (rootU, rootS)           <- newSignal Nothing :: FRP (Sink (Maybe RootGist),      Signal (Maybe RootGist))
-  (bIndexU, bIndexS)       <- newSignal Nothing :: FRP (Sink (Maybe BlogIndexFull), Signal (Maybe BlogIndexFull)) 
-  (lockU, lockS)           <- newSignal Locked
-  (viewModeU, viewModeS)   <- newSignal Site
-  (contentU, contentModel) <- newSignal (GistPending Nothing)
-  (structU, structS)       <- newSignal emptyArea :: FRP (Sink Area, Signal Area)
-  navS                     <- navComponent 
-  (nv, nU)                 <- notificationsComponent []
-  (lv, le)                 <- loginComponent  nU viewModeU :: FRP (Signal Html, Events AuthKey)
+  (cmdU, cmdE)             <- newEvent             :: FRP (Sink Cmd,                   Events Cmd)
+  (rootU, rootS)           <- newSignal Nothing    :: FRP (Sink (Maybe RootGist),      Signal (Maybe RootGist))
+  (bIndexU, bIndexS)       <- newSignal Nothing    :: FRP (Sink (Maybe BlogIndexFull), Signal (Maybe BlogIndexFull)) 
+  (lockU, lockS)           <- newSignal Locked     :: FRP (Sink Lock,                  Signal Lock) 
+  (viewModeU, viewModeS)   <- newSignal Site       :: FRP (Sink ViewMode,              Signal ViewMode) 
+  (contentU, contentModel) <- newSignal defContent :: FRP (Sink ContentState,          Signal ContentState) 
+  (structU, structS)       <- newSignal emptyArea  :: FRP (Sink Area,                  Signal Area)
+  navS                     <- navComponent         :: IO  (Signal Path)
+  (nv, nU)                 <- notificationsComponent []          :: FRP (Signal Html, Sink (Maybe Notification))
+  (lv, le)                 <- loginComponent  nU viewModeU       :: FRP (Signal Html, Events AuthKey)
   (ev, edU, ee)            <- editorComponent nU viewModeU lockS :: FRP (Signal Html, Sink EditCmd, Events EditResult)
-  (cmdU, cmdE)             <- newEvent :: FRP (Sink Cmd, Events Cmd)
 
-  let model  = (,,)  <$> structS <*> navS <*> bIndexS :: Signal Model
-  let model_ = (,)   <$> structS <*> navS             :: Signal Model_                                                 
+  let model  = (,,) <$> structS <*> navS <*> bIndexS :: Signal Model
+  let model_ = (,)  <$> structS <*> navS             :: Signal Model_                                                 
 
   let menuV  = renderMenu        cmdU <$> model_
   let menuTV = renderMenuToolbar cmdU <$> lockS <*> rootS
@@ -93,10 +96,10 @@ siteComponent c = do
     handleLogin :: Sink ViewMode -> Sink Lock -> AuthKey -> FRP ()
     handleLogin viewModeU lockU authkey = viewModeU Site >> lockU (Unlocked authkey)
 
-    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (Maybe BlogIndexFull) -> Sink Area -> Sink BodyState -> EditResult -> FRP ()
+    handleEdits :: Signal Lock -> Sink (Maybe RootGist) -> Sink (Maybe BlogIndexFull) -> Sink Area -> Sink ContentState -> EditResult -> FRP ()
     handleEdits lockS rootU _       structU contentU (RRootGist rg) = loadStruct    lockS (Types.id . digout $ rg)  rootU  structU contentU 
     handleEdits lockS _     bIndexU _       contentU (RBlogGist bg) = loadBlogIndex lockS (Types.id . blogout $ bg) bIndexU        contentU 
-    handleEdits lockS _     _       _       contentU (RGist g)      = loadGist_ lockS contentU (Types.id g) $ contentU . GistReady                                -- really, navTo gist url?
+    handleEdits lockS _     _       _       contentU (RGist g)      = loadGist_     lockS (Types.id g) contentU $ contentU . GistReady                                -- really, navTo gist url?
     handleEdits _     _     _       _       contentU (RNew g)       = contentU . AMessage $ "Your new gist has been created, id = " <> getGistId (Types.id g)
 
     handleCmd :: Sink ViewMode -> Sink Lock -> Sink EditCmd -> Cmd -> FRP ()
@@ -106,7 +109,7 @@ siteComponent c = do
         CUnlock -> viewModeU Login
         CEdit g -> edU g
 
-    handleBlogPage :: Signal Lock -> Sink BodyState -> (Area, Path, Maybe BlogIndexFull) -> FRP ()
+    handleBlogPage :: Signal Lock -> Sink ContentState -> (Area, Path, Maybe BlogIndexFull) -> FRP ()
     handleBlogPage lockS contentU (area, p:ps, bi) | isBlog (blogSlug area) (p:ps) = case (bi, ps) of
       (Nothing,         [])     -> contentU . GistPending . Just $ p:ps -- blog index
       (Nothing,         _:[])   -> contentU . GistPending . Just $ p:ps -- blog article
@@ -116,27 +119,27 @@ siteComponent c = do
     
     handleBlogPage _ _ _ = pure ()
 
-    handleTreePage :: Signal Lock -> Sink BodyState -> Model_ -> FRP ()
+    handleTreePage :: Signal Lock -> Sink ContentState -> Model_ -> FRP ()
     handleTreePage _     _     ((Area bs _ _ _ _), p) | isBlog bs p = pure ()
     handleTreePage lockS contentU ((Area _  _ _ _ f), p)               = case (f, p) of
       ([], [])  -> contentU $ GistPending Nothing
       ([], p')  -> contentU . GistPending . Just $ p'
-      (m:_, []) -> loadGist_ lockS contentU (dataSource . DT.rootLabel $ m) $ contentU . GistReady -- home page
+      (m:_, []) -> loadGist_ lockS (dataSource . DT.rootLabel $ m) contentU $ contentU . GistReady -- home page
       (ms, ps)  -> case findTreeByPath ms ps of
                      Nothing   -> contentU . GistError . NotFound $ ps
-                     Just page -> loadGist_ lockS contentU (dataSource page) $ contentU . GistReady
+                     Just page -> loadGist_ lockS (dataSource page) contentU $ contentU . GistReady
     
-    loadBlog :: Signal Lock -> Sink BodyState -> BlogIndex -> Url -> FRP ()
+    loadBlog :: Signal Lock -> Sink ContentState -> BlogIndex -> Url -> FRP ()
     loadBlog lockS contentU (BlogIndex bi) s = do
       contentU . GistPending . Just $ [s]
       case listToMaybe (Prelude.filter ((s ==) . slug) bi) <|> 
            listToMaybe (Prelude.filter ((s ==) . hash) bi) of
         Nothing -> contentU . GistError . NotFound $ [s]
-        Just x  -> loadGist_ lockS contentU (GistId $ hash x) $ contentU . GistReady
+        Just x  -> loadGist_ lockS (GistId $ hash x) contentU $ contentU . GistReady
     
-    loadBlogIndex :: Signal Lock -> GistId -> Sink (Maybe BlogIndexFull) -> Sink BodyState -> FRP ()
+    loadBlogIndex :: Signal Lock -> GistId -> Sink (Maybe BlogIndexFull) -> Sink ContentState -> FRP ()
     loadBlogIndex lockS bg bIndexU contentU  = 
-      loadGist_ lockS contentU bg $ \blogGist_ -> 
+      loadGist_ lockS bg contentU $ \blogGist_ -> 
         case unfiles $ files blogGist_ of
           []    -> contentU $ GistError $ DatasourceError "There are no files in this forest"
           (f:_) -> let x = eitherDecodeStrict' . TE.encodeUtf8 . T.pack . JSS.unpack . f_content $ f :: Either String BlogIndex
@@ -145,9 +148,9 @@ siteComponent c = do
                           Right bi' -> bIndexU $ Just (bi', BlogGist blogGist_)
     
     loadStruct :: Signal Lock -> GistId -> Sink (Maybe RootGist) 
-               -> Sink Area -> Sink BodyState -> FRP ()
+               -> Sink Area -> Sink ContentState -> FRP ()
     loadStruct lockS rg rootU structU contentU  = 
-      loadGist_ lockS contentU rg $ \rootGist_ -> do
+      loadGist_ lockS rg contentU $ \rootGist_ -> do
         rootU $ Just $ RootGist rootGist_
         case unfiles $ files rootGist_ of
           []    -> contentU $ GistError $ DatasourceError "There are no files in this forest"
@@ -166,8 +169,8 @@ siteComponent c = do
                                 []  -> Just $ DT.rootLabel x
                                 ys' -> findTreeByPath (DT.subForest x) ys'
 
-    loadGist_ :: Signal Lock -> Sink BodyState -> GistId -> (Gist -> IO ()) -> IO ()
-    loadGist_ lockS contentU g f = void . forkIO $ do
+    loadGist_ :: Signal Lock -> GistId -> Sink ContentState -> (Gist -> IO ()) -> IO ()
+    loadGist_ lockS g contentU f = void . forkIO $ do
       contentU $ GistPending Nothing
       k <- pollBehavior $ current lockS
       a <- loadGist k g :: IO (Either DatasourceError ApiResult)
@@ -177,7 +180,7 @@ siteComponent c = do
                       Left  m   -> contentU $ GistError $ DatasourceError (message m)
                       Right a'' -> f a''
 
-    view :: Sink Cmd -> Lock -> BodyState -> Area -> Html
+    view :: Sink Cmd -> Lock -> ContentState -> Area -> Html
     view _ _ (GistPending p) _ = 
       let ps = fromMaybe "" $ renderPath <$> p
       in H.div [A.class_ "loader-container"] 
