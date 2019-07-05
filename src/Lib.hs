@@ -34,7 +34,7 @@ import qualified Web.VirtualDom.Html            as H
 import qualified Web.VirtualDom.Html.Attributes as A  
 import qualified Web.VirtualDom                 as VirtualDom
 
-import qualified JavaScript.Web.Location       as WL
+import qualified JavaScript.Web.Location        as WL
 
 import           Lubeck.App                     (Html)
 import           Lubeck.FRP   
@@ -149,7 +149,7 @@ isBlog bs (x:_) = x == bs
 
 isSpecialPath :: Path -> [Url] -> Bool
 isSpecialPath []     _   = False
-isSpecialPath (x:[]) _   = False
+isSpecialPath (_:[]) _   = False
 isSpecialPath (x:_)  cms = x `elem` cms
 
 redirectLocal :: Path -> IO ()

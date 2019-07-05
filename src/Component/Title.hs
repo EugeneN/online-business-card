@@ -26,7 +26,7 @@ titleComponent m = do
 
   where
     handleTitle z@(((Area bs _ r s _), p:bid:etc, _, _), _) | isBlog bs (p:bid:etc) = blogPipeline r s z bid
-    handleTitle z@(((Area _ _ r s _), _, _, _), _)                                  = menuPipeline r s z
+    handleTitle z@(((Area _  _ r s _), _,         _, _), _)                         = menuPipeline r s z
 
     menuPipeline r s = JSS.intercalate s . reverse . (r :) . fmap getTitle . flattenMenu . extractMenu' . fst
 
