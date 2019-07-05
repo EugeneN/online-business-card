@@ -73,7 +73,7 @@ newtype BlogGist =
   BlogGist { blogout :: Gist }
   deriving (Show)
 
-type Model = (Area, Path, Lock, Maybe RootGist)
+type Model  = (Area, Path, Maybe BlogIndexFull)
 type Model_ = (Area, Path)
 
 instance FromJSON JSString where

@@ -52,27 +52,26 @@ siteComponent c = do
   (structU, structS)       <- newSignal emptyArea :: FRP (Sink Area, Signal Area)
   navS                     <- navComponent 
   (nv, nU)                 <- notificationsComponent []
-  (lv, le)                 <- loginComponent nU viewModeU :: FRP (Signal Html, Events AuthKey)
+  (lv, le)                 <- loginComponent  nU viewModeU :: FRP (Signal Html, Events AuthKey)
   (ev, edU, ee)            <- editorComponent nU viewModeU lockS :: FRP (Signal Html, Sink EditCmd, Events EditResult)
   (cmdU, cmdE)             <- newEvent :: FRP (Sink Cmd, Events Cmd)
 
-  let blogModel = (,,)  <$> structS <*> navS <*> bIndexS :: Signal (Area, Path, Maybe BlogIndexFull)
-  let pageModel = (,)   <$> structS <*> navS :: Signal Model_                                                 
-  let menuModel = (,,,) <$> structS <*> navS <*> lockS <*> rootS :: Signal Model                                                 
+  let model  = (,,)  <$> structS <*> navS <*> bIndexS :: Signal Model
+  let model_ = (,)   <$> structS <*> navS             :: Signal Model_                                                 
 
-  let menuV  = renderMenu cmdU <$> structS <*> navS
+  let menuV  = renderMenu        cmdU <$> model_
   let menuTV = renderMenuToolbar cmdU <$> lockS <*> rootS
-  let lockV  = renderLock cmdU <$> lockS
-  let v      = view cmdU <$> lockS <*> contentModel <*> structS
+  let lockV  = renderLock        cmdU <$> lockS
+  let v      = view              cmdU <$> lockS <*> contentModel <*> structS
   let v'     = layout <$> viewModeS <*> v <*> lv <*> ev <*> nv <*> menuV <*> lockV <*> menuTV
   
-  void $ subscribeEvent (updates navS) handleRedirects
-  void $ titleComponent $ (,) <$> menuModel <*> bIndexS
-  void $ subscribeEvent (updates blogModel) $ handleBlogPage lockS                       contentU
-  void $ subscribeEvent (updates pageModel) $ handleTreePage lockS                       contentU
-  void $ subscribeEvent ee              $ handleEdits    lockS rootU bIndexU structU contentU
-  void $ subscribeEvent cmdE            $ handleCmd      viewModeU lockU edU
-  void $ subscribeEvent le              $ handleLogin    viewModeU lockU
+  void $ titleComponent                    model 
+  void $ subscribeEvent (updates navS)     handleRedirects
+  void $ subscribeEvent (updates model)  $ handleBlogPage lockS                       contentU
+  void $ subscribeEvent (updates model_) $ handleTreePage lockS                       contentU
+  void $ subscribeEvent ee               $ handleEdits    lockS rootU bIndexU structU contentU
+  void $ subscribeEvent cmdE             $ handleCmd      viewModeU lockU edU
+  void $ subscribeEvent le               $ handleLogin    viewModeU lockU
 
   void . forkIO $ loadStruct    lockS (rootGist c) rootU   structU contentU 
   void . forkIO $ loadBlogIndex lockS (blogGist c) bIndexU         contentU
@@ -237,8 +236,8 @@ siteComponent c = do
     createButton cmdU (Unlocked _) = [H.button [E.click $ const $ cmdU $ CEdit ECreate] [H.text "Create new"]]
     createButton _    _            = []
     
-    renderMenu :: Sink Cmd -> Area -> Path -> Html
-    renderMenu _ (Area _ cms _ _ f) p = 
+    renderMenu :: Sink Cmd -> Model_ -> Html
+    renderMenu _ ((Area _ cms _ _ f), p) = 
       let m = extractMenu f p [] 
       in H.div [A.class_ "nav"] (renderSubMenu cms p 0 m)
 
