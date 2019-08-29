@@ -94,7 +94,8 @@ validTags = [ "address" , "article" , "body" , "footer" , "header" , "h1" , "h2"
 validAttrs :: [Attr]
 validAttrs = [ "class", "id" , "href" , "src" , "alt" , "title" , "style" , "lang" , "name" 
              , "target" , "width" , "height" , "min" , "max", "pluginspage"
-             , "data-subscribe", "data-extend", "type", "colspan"]
+             , "data-subscribe", "data-extend", "type", "colspan"
+             , "async", "defer", "data-config", "data-key"]
 
 isValidTag :: Tag -> Bool
 isValidTag = (`elem` validTags)

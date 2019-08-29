@@ -25,12 +25,12 @@ titleComponent m = do
   void $ subscribeEvent (updates m') setTitle
 
   where
-    handleTitle z@((Area bs _ _ _ _), p:bid:etc, _) | isBlog bs (p:bid:etc) = blogPipeline z bid
+    handleTitle z@((Area bs _ _ _ _ _), p:bid:etc, _) | isBlog bs (p:bid:etc) = blogPipeline z bid
     handleTitle z                                                           = menuPipeline z
 
-    menuPipeline z@((Area _ _ r s _), _, _) = JSS.intercalate s . reverse . (r :) . fmap getTitle . flattenMenu . extractMenu' $ z
+    menuPipeline z@((Area _ _ r s _ _), _, _) = JSS.intercalate s . reverse . (r :) . fmap getTitle . flattenMenu . extractMenu' $ z
 
-    blogPipeline z@((Area _ _ _ s _), _, mbi) bid = 
+    blogPipeline z@((Area _ _ _ s _ _), _, mbi) bid = 
       case mbi of
         Nothing      -> menuPipeline z
         Just (bi, _) -> 
@@ -41,7 +41,7 @@ titleComponent m = do
               ft = JSS.intercalate s [bt, t]
           in ft
 
-    extractMenu' ((Area _ _ _ _ f), p, _) = extractMenu f p []
+    extractMenu' ((Area _ _ _ _ f _), p, _) = extractMenu f p []
 
     flattenMenu MenuNil          = []
     flattenMenu (Menu m MenuNil) = findSelectedItem m

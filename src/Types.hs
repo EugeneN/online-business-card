@@ -103,10 +103,11 @@ data Area =
     , titleRoot          :: JSString
     , titleSep           :: JSString
     , forest             :: DT.Forest Page
+    , hiddenForest       :: DT.Forest Page
     } deriving (GHC.Generic, ToJSON, FromJSON, Show)
 
 emptyArea :: Area
-emptyArea = Area "" [] "" "" []    
+emptyArea = Area "" [] "" "" [] []   
 
 data Page = 
   Page 

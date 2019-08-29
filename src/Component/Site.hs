@@ -120,13 +120,15 @@ siteComponent c = do
     handleBlogPage _ _ _ = pure ()
 
     handleTreePage :: Signal Lock -> Sink ContentState -> Model_ -> FRP ()
-    handleTreePage _     _     ((Area bs _ _ _ _), p) | isBlog bs p = pure ()
-    handleTreePage lockS contentU ((Area _  _ _ _ f), p)               = case (f, p) of
+    handleTreePage _     _     ((Area bs _ _ _ _ _), p) | isBlog bs p = pure ()
+    handleTreePage lockS contentU ((Area _  _ _ _ f hf), p)            = case (f, p) of
       ([], [])  -> contentU $ GistPending Nothing
       ([], p')  -> contentU . GistPending . Just $ p'
       (m:_, []) -> loadGist_ lockS (dataSource . DT.rootLabel $ m) contentU $ contentU . GistReady -- home page
       (ms, ps)  -> case findTreeByPath ms ps of
-                     Nothing   -> contentU . GistError . NotFound $ ps
+                     Nothing   -> case findTreeByPath hf p of
+                                    Nothing         -> contentU . GistError . NotFound $ ps
+                                    Just hiddenPage -> loadGist_ lockS (dataSource hiddenPage) contentU $ contentU . GistReady
                      Just page -> loadGist_ lockS (dataSource page) contentU $ contentU . GistReady
     
     loadBlog :: Signal Lock -> Sink ContentState -> BlogIndex -> Url -> FRP ()
@@ -240,7 +242,7 @@ siteComponent c = do
     createButton _    _            = []
     
     renderMenu :: Sink Cmd -> Model_ -> Html
-    renderMenu _ ((Area _ cms _ _ f), p) = 
+    renderMenu _ ((Area _ cms _ _ f _), p) = 
       let m = extractMenu f p [] 
       in H.div [A.class_ "nav"] (renderSubMenu cms p 0 m)
 
