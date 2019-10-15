@@ -263,9 +263,9 @@ siteComponent c = do
     renderMenuLevel _   _ lvl m                       = [H.div [A.class_ $ "menu-level                    menu-level-" <> showJS lvl] (fmap renderMenuItem m)]
 
     renderMenuItem :: MenuItem -> Html
-    renderMenuItem (MISelected   x ps True)  = H.a [A.class_ "current-menu-item-special", A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MISelected   x ps True)  = H.a [A.class_ "current-menu-item-special", A.href (renderPath ps)] [ H.span [] [ H.text x ] ]
     renderMenuItem (MISelected   x ps False) = H.a [A.class_ "current-menu-item",         A.href (renderPath ps)] [ H.text x ]
-    renderMenuItem (MIUnselected x ps True)  = H.a [A.class_ "menu-item-special",         A.href (renderPath ps)] [ H.text x ]
+    renderMenuItem (MIUnselected x ps True)  = H.a [A.class_ "menu-item-special",         A.href (renderPath ps)] [ H.span [] [ H.text x ] ]
     renderMenuItem (MIUnselected x ps False) = H.a [A.class_ "menu-item",                 A.href (renderPath ps)] [ H.text x ]
 
     renderLock :: Sink Cmd -> Lock -> Html

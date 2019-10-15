@@ -239,13 +239,22 @@ blockquote {
 .menu-level .menu-item-special {
   font-family: helvetica;
   font-weight: bold !important;
-  padding: 10px !important;
-  margin: 10px 0 !important;
-  border: 2px solid transparent !important;
+  padding: 2px !important;
+  margin: 2px 0 !important;
+  border: 0px solid transparent !important;
+  width: 46px;
+  height: 46px;
 }
 
+.menu-level .menu-item-special:hover > span {
+  display: inline-block;
+  background-color: white;
+  padding: 8px !important;
+  width: 30px;
+  height: 30px;
+}
 .menu-level .menu-item-special:hover {
-  border: 2px solid #000 !important;
+  background: linear-gradient(to right, red, purple);
 }
 
 .menu-level .current-menu-item {
@@ -254,17 +263,28 @@ blockquote {
 
 .menu-level .current-menu-item:hover {}
 
+.menu-level .current-menu-item-special > span {
+  display: inline-block;
+  background-color: white;
+  padding: 8px !important;
+  width: 30px;
+  height: 30px;
+
+}
 .menu-level .current-menu-item-special {
-  border: 2px solid black !important;
+  border: 0px solid black !important;
+  background: linear-gradient(to right, red, purple);
   font-family: helvetica;
   font-weight: bold !important;
-  width: 32px;
-  height: 32px;
-  padding: 10px !important;
+  width: 46px;
+  height: 46px;
+  padding: 2px !important;
   margin: 10px 0 !important;
 }
 
-.menu-level .current-menu-item-special:hover {}
+.menu-level .current-menu-item-special:hover {
+  background: linear-gradient(to right, red, purple);
+}
 
 .menu-level-special .menu-item {
   width: 0px;
@@ -277,13 +297,12 @@ blockquote {
 }
 
 .menu-level-special .menu-item:hover {
-  border-bottom: 2px solid #000 !important;
 }
 
 .menu-level-special .menu-item-special {
   width: auto;
   display: inline-block;
-  height: 32px;
+  height: 46px;
   margin: 10px 0px;
   padding: 10px;
   border: 0px solid transparent;
@@ -291,12 +310,22 @@ blockquote {
   opacity: 1;
   font-family: helvetica;
   font-weight: bold !important;
-  padding: 10px !important;
+  padding: 2px !important;
   margin: 10px 0 !important;
   border: 2px solid transparent !important;
 }
 
-.menu-level-special .menu-item-special:hover {}
+.menu-level-special .menu-item-special:hover > span {
+  display: inline-block;
+  background-color: white;
+  padding: 8px !important;
+  width: 30px;
+  height: 30px;
+
+}
+.menu-level-special .menu-item-special:hover {
+  border-bottom: 2px solid #000 !important;
+}
 
 .menu-level-special .current-menu-item {
   width: 0px;
