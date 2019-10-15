@@ -213,29 +213,48 @@ blockquote {
 
 /* ------------------------------ */
 
+.menu-level>a>span {
+  background-color: transparent;
+  width: 100%;
+  height: 100%;
+  display: inline-block;
+}
+
 .menu-level>a {
   transition: 0.5s;
   width: auto;
   display: inline-block;
-  height: 32px;
+  height: 46px;
   margin: 10px 10px;
-  padding: 10px 0;
-  border-top: 2px solid transparent;
-  border-bottom: 2px solid transparent;
+  padding: 0 0 2px 0;
+  border-top: 0px solid transparent;
+  border-bottom: 0px solid transparent;
   overflow: hidden;
-  line-height: 32px;
+  line-height: 46px;
   opacity: 1;
   color: #000;
   text-decoration: none;
   font-weight: lighter;
+  background: transparent;
 }
 
 .menu-level .menu-item {}
 
+.menu-level>a:hover>span {
+  background-color: white;
+}
 .menu-level .menu-item:hover {
-  border-bottom: 2px solid black !important;
+    /* border-bottom: 2px solid black !important; */
+  background: linear-gradient(to right, red, purple);
 }
 
+.menu-level .menu-item-special>span {
+  display: inline-block;
+  background-color: transparent;
+  /* padding: 8px !important; */
+  width: 100%;
+  height: 100%;
+}
 .menu-level .menu-item-special {
   font-family: helvetica;
   font-weight: bold !important;
@@ -249,16 +268,20 @@ blockquote {
 .menu-level .menu-item-special:hover > span {
   display: inline-block;
   background-color: white;
-  padding: 8px !important;
-  width: 30px;
-  height: 30px;
+  /* padding: 8px !important; */
+  width: 100%;
+  height: 100%;
 }
 .menu-level .menu-item-special:hover {
   background: linear-gradient(to right, red, purple);
 }
 
+.menu-level .current-menu-item>span {
+  background-color: white;
+}
+
 .menu-level .current-menu-item {
-  border-bottom: 2px solid black !important;
+  background: linear-gradient(to right, red, purple);
 }
 
 .menu-level .current-menu-item:hover {}
@@ -266,9 +289,8 @@ blockquote {
 .menu-level .current-menu-item-special > span {
   display: inline-block;
   background-color: white;
-  padding: 8px !important;
-  width: 30px;
-  height: 30px;
+  width: 100%;
+  height: 100%;
 
 }
 .menu-level .current-menu-item-special {
