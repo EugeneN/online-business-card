@@ -727,6 +727,7 @@ ul.img-list {
   font-family: arial;
   font-weight: bold;
   font-size: 150%;
+  max-width: 90%;
 }
 
 .comments-block {

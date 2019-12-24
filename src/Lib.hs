@@ -130,18 +130,24 @@ htmlStringToVirtualDom s = fmap go htmlAST
     c2s (XMLT.Text (XMLT.CData _ z _)) = JSS.pack z
     c2s (XMLT.CRef _)                  = ""
 
-    go (XMLT.Text (XMLT.CData _ x _))                                   = H.text $ JSS.pack x
-    go (XMLT.Elem (XMLT.Element (XMLT.QName tag _ _) attrs children _)) = if isValidTag (JSS.pack tag)
-                                                                            then if (JSS.pack tag) == "script"
-                                                                                --  then VirtualDom.node (JSS.pack tag) (fmap goAttrs attrs) [H.text $ scriptContent children]
-                                                                                 then VirtualDom.node "script" (fmap goAttrs attrs) [H.text $ scriptContent children]
-                                                                                 else VirtualDom.node (JSS.pack tag) (fmap goAttrs attrs) (fmap go children)
-                                                                            else H.text $ "<Invalid tag: " <> JSS.pack tag <> ">"
-    go (XMLT.CRef _)                                                    = H.text " " -- $ JSS.pack x
+    go (XMLT.Text (XMLT.CData _ x _)) = 
+      H.text $ JSS.pack x
 
-    goAttrs (XMLT.Attr (XMLT.QName key _ _) val) = if isValidAttrName (JSS.pack key) && isValidAttrVal (JSS.pack val)
-                                                     then VirtualDom.attribute (JSS.pack key) (JSS.pack val)
-                                                     else VirtualDom.attribute ("invalid-attr:" <> JSS.pack key) ""
+    go (XMLT.Elem (XMLT.Element (XMLT.QName tag _ _) attrs children _)) = 
+      if isValidTag (JSS.pack tag)
+      then if (JSS.pack tag) == "script"
+          --  then VirtualDom.node (JSS.pack tag) (fmap goAttrs attrs) [H.text $ scriptContent children]
+            then VirtualDom.node "script" (fmap goAttrs attrs) [H.text $ scriptContent children]
+            else VirtualDom.node (JSS.pack tag) (fmap goAttrs attrs) (fmap go children)
+      else H.text $ "<Invalid tag: " <> JSS.pack tag <> ">"
+
+    go (XMLT.CRef _) = 
+      H.text " " -- $ JSS.pack x
+
+    goAttrs (XMLT.Attr (XMLT.QName key _ _) val) = 
+      if isValidAttrName (JSS.pack key) && isValidAttrVal (JSS.pack val)
+      then VirtualDom.attribute (JSS.pack key) (JSS.pack val)
+      else VirtualDom.attribute ("invalid-attr:" <> JSS.pack key) ""
 
 
 isBlog :: Url -> Path -> Bool
@@ -160,13 +166,15 @@ foreign import javascript unsafe "document.location.hash = $1" redirectLocal_ ::
 
 foreign import javascript unsafe "btoa($1)" btoa :: JSString -> JSString
 
-foreign import javascript unsafe "if (location.protocol == 'http:') { location.href = 'https:' + window.location.href.substring(window.location.protocol.length); }"
+foreign import javascript unsafe 
+  "if (location.protocol == 'http:') { location.href = 'https:' + window.location.href.substring(window.location.protocol.length); }"
   redirectToHTTPS :: IO ()
 
 foreign import javascript unsafe "window.RootG ? window.RootG.toString() : '' "
   getConfig :: IO JSString
 
-foreign import javascript unsafe "window._perfLog=window._perfLog || []; var x=[performance.now(), $1]; window._perfLog.push(x);"
+foreign import javascript unsafe 
+  "window._perfLog=window._perfLog || []; var x=[performance.now(), $1]; window._perfLog.push(x);"
   perfLog :: JSString -> IO ()
 
 readConfig :: IO (Either JSString SiteConfig)
