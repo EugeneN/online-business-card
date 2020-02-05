@@ -34,7 +34,7 @@ div, h1, h2, img, p, span {
 
 a {
   color: #4078c0;
-  text-decoration: none;
+  text-decoration: underline;
 }
 
 a:hover {
