@@ -3,6 +3,7 @@
 module Main where
 
 import           Data.Monoid    ((<>))
+import           Control.Monad  (when)
 import           Lubeck.App     (runAppReactive)
 import           Lubeck.FRP
 import           Component.Site (siteComponent)
@@ -13,7 +14,7 @@ import           Web.VirtualDom
 main :: IO ()
 main = do
     z <- isLocalhost
-    if not z then redirectToHTTPS else pure ()
+    when (not z) redirectToHTTPS
 
     c <- readConfig
     case c of

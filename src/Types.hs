@@ -264,12 +264,12 @@ data GithubUser =
     , gu_following                 :: Int 
     , gu_created_at                :: UTCTime 
     , gu_updated_at                :: UTCTime 
-    , gu_private_gists             :: Int 
-    , gu_total_private_repos       :: Int 
-    , gu_owned_private_repos       :: Int 
-    , gu_disk_usage                :: Int 
-    , gu_collaborators             :: Int 
-    , gu_two_factor_authentication :: Bool 
+    -- , gu_private_gists             :: Int 
+    -- , gu_total_private_repos       :: Int 
+    -- , gu_owned_private_repos       :: Int 
+    -- , gu_disk_usage                :: Int 
+    -- , gu_collaborators             :: Int 
+    -- , gu_two_factor_authentication :: Bool 
     } deriving (GHC.Generic)  
 
 instance FromJSON GithubUser where

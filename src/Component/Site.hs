@@ -120,8 +120,8 @@ siteComponent c = do
     handleBlogPage _ _ _ = pure ()
 
     handleTreePage :: Signal Lock -> Sink ContentState -> Model_ -> FRP ()
-    handleTreePage _     _     ((Area bs _ _ _ _ _), p) | isBlog bs p = pure ()
-    handleTreePage lockS contentU ((Area _  _ _ _ f hf), p)            = case (f, p) of
+    handleTreePage _     _     (Area bs _ _ _ _ _, p) | isBlog bs p = pure ()
+    handleTreePage lockS contentU (Area _  _ _ _ f hf, p)           = case (f, p) of
       ([], [])  -> contentU $ GistPending Nothing
       ([], p')  -> contentU . GistPending . Just $ p'
       (m:_, []) -> loadGist_ lockS (dataSource . DT.rootLabel $ m) contentU $ contentU . GistReady -- home page

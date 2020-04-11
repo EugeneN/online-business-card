@@ -66,7 +66,8 @@ loginComponent nU uiToggleU = do
 
       where
         api  = userApi { headers = [auth, ct] }
-        auth = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
+        -- auth = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
+        auth = ("Authorization", "token " <> psw) -- base64encode (unm <> ":" <> psw))
         ct   = ("Content-Type", "application/json")
         base64encode = btoa
 
