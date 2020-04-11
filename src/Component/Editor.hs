@@ -134,10 +134,8 @@ editorComponent nU uiToggleU lockS = do
       pure r
 
       where
-        unm  = username ak
-        psw  = password ak
         api  = gistApi { headers = [auth, ct] }
-        auth = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
+        auth = ("Authorization", "token " <> token ak)
         ct   = ("Content-Type", "application/json")
         base64encode = btoa
 
@@ -149,10 +147,8 @@ editorComponent nU uiToggleU lockS = do
       pure r
 
       where
-        unm  = username ak
-        psw  = password ak
         api  = gistApi { headers = [auth, ct] }
-        auth = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
+        auth = ("Authorization", "token " <> token ak)
         ct   = ("Content-Type", "application/json")
         base64encode = btoa
 

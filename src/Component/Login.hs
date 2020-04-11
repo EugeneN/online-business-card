@@ -27,13 +27,11 @@ import           Component.Notification         (Notification, nerr, nsuccess)
 
 data LoginForm = 
   LoginForm 
-    { username :: JSString
-    , password :: JSString
-    }
+    { token :: JSString }
 data FormValid = FormValid AuthKey | FormNotValid DatasourceError
 
 emptyForm :: LoginForm
-emptyForm = LoginForm "" ""
+emptyForm = LoginForm ""
 
 loginComponent :: Sink (Maybe Notification) -> Sink ViewMode -> FRP (Signal Html, Events AuthKey)
 loginComponent nU uiToggleU = do
@@ -54,20 +52,19 @@ loginComponent nU uiToggleU = do
     toString (NotFound p)        = "Path not found: " <> renderPath p
 
     validate :: LoginForm -> IO FormValid
-    validate (LoginForm u p) = do
-      r <- authenticateOrError (u, p)
+    validate (LoginForm tok) = do
+      r <- authenticateOrError (tok)
       pure $ case r of
         Left e    -> FormNotValid e
-        Right usr -> FormValid $ AuthKey u p usr
+        Right usr -> FormValid $ AuthKey tok usr
     
-    authenticateOrError :: (JSString, JSString) -> IO (Either DatasourceError GithubUser)
-    authenticateOrError (unm, psw) = do
+    authenticateOrError :: JSString -> IO (Either DatasourceError GithubUser)
+    authenticateOrError tok = do
       getAPI api "" :: IO (Either DatasourceError GithubUser)
 
       where
         api  = userApi { headers = [auth, ct] }
-        -- auth = ("Authorization", "Basic " <> base64encode (unm <> ":" <> psw))
-        auth = ("Authorization", "token " <> psw) -- base64encode (unm <> ":" <> psw))
+        auth = ("Authorization", "token " <> tok)
         ct   = ("Content-Type", "application/json")
         base64encode = btoa
 
@@ -80,11 +77,10 @@ loginComponent nU uiToggleU = do
       pure (htmlS, submits aEvent, reset)
 
     w :: Sink ViewMode ->  Widget LoginForm (Submit LoginForm)
-    w uiToggleU' u v@(LoginForm uname pass) =  
+    w uiToggleU' u v@(LoginForm tok) =  
       H.div [A.class_ "login-form"] 
             [ H.h1 [] [H.text "Login"]
-            , H.div [] [stringWidget   True  (contramapSink (\n -> DontSubmit $ LoginForm n pass)  u) uname]
-            , H.div [] [passwordWidget False (contramapSink (\n -> DontSubmit $ LoginForm uname n) u) pass]
+            , H.div [] [passwordWidget False (contramapSink (\n -> DontSubmit $ LoginForm n) u) tok]
             , H.button [E.click $ \_ -> u $ Submit v] [H.text "Okay"]
             , H.button [E.click $ \_ -> uiToggleU' Site] [H.text "Nope"]
             ]

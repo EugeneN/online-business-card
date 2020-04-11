@@ -56,8 +56,7 @@ type BlogIndexFull = (BlogIndex, BlogGist)
 
 data AuthKey = 
   AuthKey 
-    { username :: JSString
-    , password :: JSString
+    { token    :: JSString
     , user     :: GithubUser
     }
 
