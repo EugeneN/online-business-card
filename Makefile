@@ -15,7 +15,7 @@ servedist: dist
 
 copyres:
 	cp -R ./res/  $(distdir)
-	cp -R ./extra/  $(distdir)
+	# cp -R ./extra/  $(distdir)
 
 build:
 	stack build
@@ -35,6 +35,12 @@ dist: all
 	uglifyjs $(distdir)runmain.js > $(expdir)runmain.js
 	# gzip -6 -f $(expdir)all.js
 	mv $(expdir)index-dist.html $(expdir)index.html 
+
+electron-dist:
+	electron-packager .
+
+run-electron: dist
+	npm start
 
 push: dist
 	git add . && git commit -m "bs-push" && git push
