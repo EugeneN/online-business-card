@@ -1,0 +1,23 @@
+{
+  "name": "EN-business",
+  "version": "1.0.0",
+  "description": "EN application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": "https://github.com/EugeneN/online-business-card",
+  "keywords": [
+    "Eugene",
+    "business",
+    "site",
+    "portfolio",
+    "personal"
+  ],
+  "author": "Eugene Naumenko",
+  "license": "All rights reserved (c) Eugene Naumenko 2020",
+  "devDependencies": {
+    "electron": "^8.2.5",
+    "electron-packager": "^14.2.1"
+  }
+}

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src https://api.github.com; style-src 'unsafe-inline'; style-src-elem 'self' 'unsafe-inline'; img-src * ">
+    <title>EN</title>
+  </head>
+  <body style="-webkit-app-region: drag">
+    <style>
+      button, .section { -webkit-app-region: no-drag; }
+    </style>
+    <link rel="stylesheet" href="dist/css/screen.css"/>
+    <link rel="icon" href="favicon.ico" sizes="16x16" />
+
+    <script src="dist/rts.js"></script>
+    <script src="dist/lib.js"></script>
+    <script src="dist/out.js"></script>
+    <script src="dist/rte/ckeditor.js"></script>
+    <!-- <script>RootG=JSON.stringify({"rootGist":"2f741d60ab90d986379aa63658f0300e", "blogGist":"72aba9a613d411a528ac2bc4b780538b"})</script> -->
+    <script src="dist/runmain.js"></script>
+
+    <!-- <script src="./renderer.js"></script> -->
+  </body>
+</html>
