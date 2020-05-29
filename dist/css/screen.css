@@ -197,6 +197,7 @@ blockquote {
   font-size: 24px;
   font-family: ff-tisa-web-pro, georgia, serif;
   font-family: helvetica, sans-serif;
+  text-transform: uppercase;
 }
 
 .menu-level-0 {
